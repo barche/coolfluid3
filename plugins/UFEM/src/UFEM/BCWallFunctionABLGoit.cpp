@@ -116,7 +116,7 @@ void BCWallFunctionABLGoit::trigger_setup()
       _A(u) = _0, _A(p) = _0,
       element_quadrature
       (
-        // _A(p, u[_i]) += -transpose(N(p)) * N(u) * normal[_i], // no-penetration condition
+        _A(p, u[_i]) += -transpose(N(p)) * N(u) * normal[_i], // no-penetration condition
         _A(u[_i], u[_i]) += ABL_factor(nu_eff) * _norm(u) * transpose(N(u)) * N(u) * _norm(normal) // Goit p. 19 
         // _A(u[_i], u[_i]) +=  ABL_factor(nu_eff) * _norm(u) * transpose(N(u) + 0.437995*u_adv[0]*nabla(u)) * N(u) * _norm(normal) // N(u) + tau_su*u_adv*nabla(u)
       ),

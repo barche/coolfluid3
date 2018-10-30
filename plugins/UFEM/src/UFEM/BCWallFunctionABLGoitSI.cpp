@@ -91,7 +91,7 @@ void BCWallFunctionABLGoitSI::trigger_setup()
   Handle<ProtoAction> wall_law(get_child("WallLaw"));
   
   FieldVariable<0, VectorField> u("Velocity", "navier_stokes_u_solution");
-  // FieldVariable<1, ScalarField> p("Pressure", "navier_stokes_solution");
+  FieldVariable<1, ScalarField> p("Pressure", "navier_stokes_solution");
   FieldVariable<2, ScalarField> k("k", "ke_solution");
   FieldVariable<3, ScalarField> nu_eff("EffectiveViscosity", "navier_stokes_viscosity");
   FieldVariable<4, VectorField> u_adv("AdvectionVelocity", "linearized_velocity");
@@ -109,11 +109,11 @@ void BCWallFunctionABLGoitSI::trigger_setup()
     boost::mpl::vector3<mesh::LagrangeP1::Line2D, mesh::LagrangeP1::Triag3D, mesh::LagrangeP1::Quad3D>(),
     group
     (
-      _A(u) = _0, //_A(p) = _0, // Assembly version
+      _A(u) = _0, _A(p) = _0, // Assembly version
                   // _a[u] = _0, // rhs version
       element_quadrature
       (
-        // _A(p, u[_i]) += -transpose(N(p)) * N(u) * normal[_i], // no-penetration condition
+        _A(p, u[_i]) += -transpose(N(p)) * N(u) * normal[_i], // no-penetration condition
         // _a[u[_i]] += ABL_factor() * _norm(u) * transpose(N(u)) * u[_i] * _norm(normal) * lit(dt()) // rhs version 
         _A(u[_i], u[_i]) += _norm(u) * transpose(N(u)) * N(u) * _norm(normal) * lit(dt()) * ABL_factor() // Goit p. 19  // Assembly version 
       ),
