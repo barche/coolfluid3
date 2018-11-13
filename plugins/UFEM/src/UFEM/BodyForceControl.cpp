@@ -63,8 +63,9 @@ BodyForceControl::BodyForceControl(const std::string& name) :
   ProtoAction(name)
 {
   options().add("velocity_field_tag", "navier_stokes_u_solution")
-    .pretty_name("Velocity Field Tag")
-    .description("Tag for the field containing the velocity");
+      .pretty_name("Velocity Field Tag")
+      .description("Tag for the field containing the velocity")
+      .mark_basic();
 
   options().add("surface_regions", m_surface_regions)
       .pretty_name("Regions")
