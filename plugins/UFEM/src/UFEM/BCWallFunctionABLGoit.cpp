@@ -109,8 +109,8 @@ void BCWallFunctionABLGoit::trigger_setup()
   // Set normal component to zero and tangential component to the wall-law value
   wall_law->set_expression(elements_expression
   (
-    // boost::mpl::vector3<mesh::LagrangeP1::Line2D, mesh::LagrangeP1::Triag3D, mesh::LagrangeP1::Quad3D>(), // Valid for surface element types
-    boost::mpl::vector<mesh::LagrangeP1::Line2D>(), //mesh::LagrangeP1::Triag3D, mesh::LagrangeP1::Quad3D>(), // Valid for surface element types
+    boost::mpl::vector<mesh::LagrangeP1::Line2D, mesh::LagrangeP1::Triag3D, mesh::LagrangeP1::Quad3D>(), // Valid for surface element types
+    /* boost::mpl::vector<mesh::LagrangeP1::Line2D>(), //mesh::LagrangeP1::Triag3D, mesh::LagrangeP1::Quad3D>(), // Valid for surface element types */
     group
     (
       _A(u) = _0, _A(p) = _0,
