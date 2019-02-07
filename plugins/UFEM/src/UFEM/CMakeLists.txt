@@ -134,6 +134,7 @@ list( APPEND coolfluid_ufem_files
   SUPG.cpp
   SUPGFields.hpp
   SUPGFields.cpp
+  SUPGNodes.hpp
   Tags.hpp
   Tags.cpp
   TweedeStap.hpp
@@ -142,6 +143,8 @@ list( APPEND coolfluid_ufem_files
   UnsteadyAction.cpp
   VelocityGradient.hpp
   VelocityGradient.cpp
+  VMS.hpp
+  VMS.cpp
   VolumeIntegral.hpp
   VolumeIntegral.cpp
   WriteRestartManager.hpp

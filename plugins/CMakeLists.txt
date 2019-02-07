@@ -16,7 +16,7 @@ add_subdirectory( UFEM )
 add_subdirectory( ui )
 
 # Plugin that exposes functionality from the VTK libraries
-add_subdirectory(vtk)
+#add_subdirectory(vtk)
 
 # Plugin for mesh partitioning using Zoltan
 add_subdirectory(zoltan)

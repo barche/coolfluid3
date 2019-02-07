@@ -163,6 +163,7 @@ struct ComputeTauImpl : boost::noncopyable
       h_rgn = sqrt(h_rgn);
 
       const Real umag = detail::norm(u.eval());
+      // yop: acc. to ART_Tezduyar_2002_JCAM-Vol4-n1-p71-88_p77, should be the commented value below
       const Real h_ugn = h_rgn;//fabs(2.*umag / (u.eval()*u.nabla()).sum());
 
       const Real tau_adv_inv = (2.*umag)/h_ugn;
@@ -171,6 +172,7 @@ struct ComputeTauImpl : boost::noncopyable
 
       tau_su = 1./(tau_adv_inv + tau_time_inv + tau_diff_inv);
       tau_ps = tau_su;
+      // yop: where does the tau_bulk value come from? src?
       tau_bulk = tau_su*umag*umag;
     }
     else if(supg_type == SUPGTypes::METRIC)
