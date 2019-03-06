@@ -27,6 +27,7 @@
 #include "ActuatorDiskCtAdjoint.hpp"
 
 #include "solver/actions/Proto/SurfaceIntegration.hpp"
+#include "solver/actions/Proto/VolumeIntegration.hpp"
 #include "solver/actions/Proto/ProtoAction.hpp"
 #include "solver/actions/Proto/Expression.hpp"
 
