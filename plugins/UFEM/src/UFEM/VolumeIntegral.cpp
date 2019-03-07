@@ -103,7 +103,7 @@ void VolumeIntegral::execute()
   else if (m_component != 5)
   {
     FieldVariable<0, VectorField> v(variable_name, tag);
-    volume_integral(m_integral_value, v[m_component]);
+    volume_integral(m_integral_value, m_loop_regions, v[m_component]);
   }
   else
   {
