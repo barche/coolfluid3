@@ -102,7 +102,8 @@ void VolumeIntegral::execute()
   }
   else if (m_component != 5)
   {
-    FieldVariable<0, VectorField> v(variable_name, tag);
+    boost::mpl::vector<mesh::LagrangeP1::Triag2D, mesh::LagrangeP1::Tetra3D> etypes;
+    FieldVariable<0, VectorField> v(variable_name, tag, etypes);
     volume_integral(m_integral_value, m_loop_regions, v[m_component]);
   }
   else
