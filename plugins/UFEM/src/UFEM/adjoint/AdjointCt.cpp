@@ -179,7 +179,7 @@ void AdjointCt::trigger_assembly()
                   _A(U[_i], U[_j]) += transpose(tau_bulk*nabla(U)[_i]) * nabla(U)[_j]-transpose(N(U) - tau_su*u*nabla(U)) * u[_j] * nabla(U)[_i], // Bulk viscosity + additional adjoint advection term
                                       //+ 0.5*u[_i]*(N(U) - tau_su*u*nabla(U)) * nabla(U)[_j], //  skew symmetric part of advection (standard +SUPG)
                   _T(q    , U[_i]) += tau_ps * transpose(nabla(q)[_i]) * N(U), // Time, PSPG
-                  _T(U[_i], U[_i]) += transpose(N(U) - tau_su*u*nabla(U)) * N(U), // Time, standard and SUPG
+                  _T(U[_i], U[_i]) += -transpose(N(U) - tau_su*u*nabla(U)) * N(U), // Time, standard and SUPG
                   _a[U[_i]] += transpose(N(U) - tau_su*u*nabla(U)) * F[_i]
                           // transpose(N(U) -tau_su*u*nabla(U)) * lit(3.0) / lit(2.0) * Ct * uDisk[_i] * uDisk[_i] / lit(m_th) * density_ratio 
                           // -transpose(N(U) - tau_su*u*nabla(U)) * lit(3.0) * g[_i] * density_ratio + 
@@ -198,29 +198,29 @@ void AdjointCt::trigger_assembly()
       )
     )
   ));
-  Uint Nt = 0.;
-  for(auto&& region : m_actuator_regions)
-  {
-    // CFinfo << "Test assembly" << CFendl;
-      auto region_action = create_proto_action(region->name(), elements_expression(boost::mpl::vector2<mesh::LagrangeP1::Line2D,
-          mesh::LagrangeP1::Triag3D>(), group(
-                                                       // set element vector to zero Line2D Triag3D
-													  _A(q) = _0, _A(U) = _0, _a[U] = _0, _a[q] = _0,
+  // Uint Nt = 0.;
+  // for(auto&& region : m_actuator_regions)
+  // {
+  //   // CFinfo << "Test assembly" << CFendl;
+  //     auto region_action = create_proto_action(region->name(), elements_expression(boost::mpl::vector2<mesh::LagrangeP1::Line2D,
+  //         mesh::LagrangeP1::Triag3D>(), group(
+  //                                                      // set element vector to zero Line2D Triag3D
+	// 												  _A(q) = _0, _A(U) = _0, _a[U] = _0, _a[q] = _0,
 
-                            element_quadrature
-                            (
-                                //_A(U[_i], U[_i]) += transpose(N(U)) * N(U) * Ct * uDisk[0]  /* / lit(m_th) */  * normal[_i],
-                                // _a[U[_i]] += -transpose(N(U)) * lit(m_U_mean_disk) * Ct * uDisk[0] * normal[_i],
-                                // _a[U[_i]] += transpose(N(U)) * lit(3.0) / lit(2.0) * Ct * uDisk[0] * uDisk[0] * normal[_i]
-                            ), // integrate
-                            system_rhs +=-_A * _x + _a, // update global system RHS with element vector
-													  system_matrix += theta * _A
-                                                   )));
-      m_assembly->add_component(region_action);
-      region_action->options().set("regions", std::vector<common::URI>({region->uri()}));
-      region_action->options().option("regions").add_tag("norecurse");
-      Nt+=1;
-  }
+  //                           element_quadrature
+  //                           (
+  //                               //_A(U[_i], U[_i]) += transpose(N(U)) * N(U) * Ct * uDisk[0]  /* / lit(m_th) */  * normal[_i],
+  //                               // _a[U[_i]] += -transpose(N(U)) * lit(m_U_mean_disk) * Ct * uDisk[0] * normal[_i],
+  //                               // _a[U[_i]] += transpose(N(U)) * lit(3.0) / lit(2.0) * Ct * uDisk[0] * uDisk[0] * normal[_i]
+  //                           ), // integrate
+  //                           system_rhs +=-_A * _x + _a, // update global system RHS with element vector
+	// 												  system_matrix += theta * _A
+  //                                                  )));
+  //     m_assembly->add_component(region_action);
+  //     region_action->options().set("regions", std::vector<common::URI>({region->uri()}));
+  //     region_action->options().option("regions").add_tag("norecurse");
+  //     Nt+=1;
+  // }
 
   m_update->add_component(create_proto_action("Update", nodes_expression(group
   (
