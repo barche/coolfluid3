@@ -179,7 +179,7 @@ void AdjointCt::trigger_assembly()
                   _A(U[_i], U[_j]) += transpose(tau_bulk*nabla(U)[_i]) * nabla(U)[_j]-transpose(N(U) - tau_su*u*nabla(U)) * u[_j] * nabla(U)[_i], // Bulk viscosity + additional adjoint advection term
                                       //+ 0.5*u[_i]*(N(U) - tau_su*u*nabla(U)) * nabla(U)[_j], //  skew symmetric part of advection (standard +SUPG)
                   _T(q    , U[_i]) += tau_ps * transpose(nabla(q)[_i]) * N(U), // Time, PSPG
-                  _T(U[_i], U[_i]) += -transpose(N(U) - tau_su*u*nabla(U)) * N(U), // Time, standard and SUPG
+                  _T(U[_i], U[_i]) += transpose(N(U) - tau_su*u*nabla(U)) * N(U), // Time, standard and SUPG
                   _a[U[_i]] += transpose(N(U) - tau_su*u*nabla(U)) * F[_i]
                           // transpose(N(U) -tau_su*u*nabla(U)) * lit(3.0) / lit(2.0) * Ct * uDisk[_i] * uDisk[_i] / lit(m_th) * density_ratio 
                           // -transpose(N(U) - tau_su*u*nabla(U)) * lit(3.0) * g[_i] * density_ratio + 
