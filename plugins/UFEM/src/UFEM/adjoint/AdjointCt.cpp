@@ -164,7 +164,8 @@ void AdjointCt::trigger_assembly()
     (
       boost::mpl::vector2<
           mesh::LagrangeP1::Triag2D,
-          mesh::LagrangeP1::Tetra3D
+          mesh::LagrangeP1::Tetra3D,
+          mesh::LagrangeP1::Quad2D
           >(),
       group
       (
