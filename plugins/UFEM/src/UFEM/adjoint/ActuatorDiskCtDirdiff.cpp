@@ -140,7 +140,7 @@ void ActuatorDiskCtDirdiff::execute()
   // surface_integral(m_SensU_mean_disk, std::vector<Handle<mesh::Region>>({m_loop_regions[1]}), ((SensU*normal)[0]));
 
   boost::mpl::vector<mesh::LagrangeP1::Triag2D, mesh::LagrangeP1::Tetra3D, mesh::LagrangeP1::Quad2D> etypes;
-  volume_integral(m_SensU_mean_disk, std::vector<Handle<mesh::Region>>({m_loop_regions[0]}), U[0], etypes);
+  volume_integral(m_SensU_mean_disk, std::vector<Handle<mesh::Region>>({m_loop_regions[0]}), SensU[0], etypes);
   m_SensU_mean_disk /= (m_area * m_th);
   
   // m_SensU_mean_disk /= m_area;
