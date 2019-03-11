@@ -51,7 +51,7 @@ void NavierStokes::set_assembly_expression(const std::string& action_name)
           _T(p    , u[_i]) += tau_ps * transpose(nabla(p)[_i]) * N(u), // Time, PSPG
           _T(u[_i], u[_i]) += transpose(N(u) + tau_su*u_adv*nabla(u)) * N(u), // Time, standard and SUPG
           _a[u[_i]] += transpose(N(u) + tau_su*u_adv*nabla(u)) * g[_i] * density_ratio,
-          _a[p] += tau_ps * transpose(nabla(p))[_i] * g[_i] * density_ratio
+          _a[p] += tau_ps * transpose(nabla(p)) * g * density_ratio
         ),
         system_rhs += -_A * _x + _a,
         _A(p) = _A(p) / theta,
