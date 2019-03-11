@@ -127,7 +127,7 @@ void ActuatorDiskCtAdjoint::trigger_setup()
   (
     group
     (
-      F[0] = (-UDisk[0] * lit(m_ct) * uDisk[0] + lit(1.5) * lit(m_ct) * uDisk[0] * uDisk[0]) / lit(m_th)
+      F[0] = (-UDisk[0] * Ct * uDisk[0] + lit(1.5) * Ct * uDisk[0] * uDisk[0]) / lit(m_th)
      )
   ));
 
