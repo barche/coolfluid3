@@ -35,6 +35,11 @@
 #include <compile.h>
 #include <eval.h>
 
+#if PY_MAJOR_VERSION >= 3
+#define PyString_Type PySlice_Type
+#define PyString_AsString PyBytes_AsString
+#define PyString_FromString PyBytes_FromString
+#endif
 
 namespace cf3 {
 namespace python {

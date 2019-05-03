@@ -51,7 +51,7 @@ ComponentBuilder < VMS, LSSActionUnsteady, LibUFEM > VMS_builder;
 
 VMS::VMS(const std::string& name) :
   LSSActionUnsteady(name),
-  m_alphaM(0.5),
+  m_alphaM(0.5), // Values from (43,84) p. 182 from Bazilevs 2007
   m_alphaF(0.5),
   m_gamma(0.5)
 {
@@ -98,22 +98,7 @@ VMS::VMS(const std::string& name) :
   set_expression();
 }
 
-// /// Convenience type for a compute_tau operation, grouping the stored operator and its proto counterpart
-// struct ComputeTauVMS
-// {
-//   ComputeTauVMS() :
-//     apply(boost::proto::as_child(data))
-//   {
-//   }
-  
-//   // Stores the operator
-//   solver::actions::Proto::MakeSFOp<ComputeTauImpl>::stored_type data;
-  
-//   // Use as apply(velocity_field, nu_eff_field, dt, tau_ps, tau_su, tau_bulk)
-//   solver::actions::Proto::MakeSFOp<ComputeTauImpl>::reference_type apply;
-// };
-
-struct ComputeTauVMS
+struct ComputeTauVMSImpl
 {
   typedef void result_type;
 
@@ -121,14 +106,29 @@ struct ComputeTauVMS
   template<typename UT, typename NUT>
   void operator()(const UT& u, const NUT& nu_eff, const Real& dt, Real& tau_ps, Real& tau_su, Real& tau_bulk) const
   {
-  //   // Average viscosity
-  //   const Real element_nu = fabs(detail::mean(nu_eff.value()));
-  //   compute_coefficients(u, element_nu, dt, tau_ps, tau_su, tau_bulk);
+    // Average viscosity
+    const Real element_nu = fabs(detail::mean(nu_eff.value()));
+    compute_coefficients(u, element_nu, dt, tau_ps, tau_su, tau_bulk);
   }
 };
 
-MakeSFOp<ComputeTauVMS>::type compute_tau = {};
+MakeSFOp<ComputeTauVMSImpl>::type compute_tau = {};
 
+
+/// Convenience type for a compute_tau operation, grouping the stored operator and its proto counterpart
+struct ComputeTauVMS
+{
+  ComputeTauVMS() :
+    apply(boost::proto::as_child(data))
+  {
+  }
+  
+  // Stores the operator
+  solver::actions::Proto::MakeSFOp<ComputeTauVMSImpl>::stored_type data;
+  
+  // Use as apply(velocity_field, nu_eff_field, dt, tau_ps, tau_su, tau_bulk)
+  solver::actions::Proto::MakeSFOp<ComputeTauVMSImpl>::reference_type apply;
+};
 
 void VMS::set_expression()
 {
@@ -183,11 +183,13 @@ void VMS::set_expression()
     group
     (
       _A = _0, _a = _0,
+      compute_tau(),
       // compute_tau(u, nu_eff, lit(dt()), lit(tau_su)),
       element_quadrature
       (
         /// K (p.183 - eq.102)
-        _A(u[_i],u[_j]) += m_alphaF * m_gamma * lit(dt()) * transpose(nabla(u)[_i]) * nu_eff * nabla(u)[_j] \
+        _A(u[_i],u[_j]) += \
+          m_alphaF * m_gamma * lit(dt()) * transpose(nabla(u)[_i]) * nu_eff * nabla(u)[_j] \
           + m_alphaF * m_gamma * lit(dt()) * transpose(nabla(u)[_i]) * tau_c * nabla(u)[_j],
         
         _A(u[_i],u[_i]) += m_alphaM * transpose(N(u)) * N(u) \

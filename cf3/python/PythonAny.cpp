@@ -19,6 +19,11 @@
 
 #include "python/ComponentWrapper.hpp"
 
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_Type PyLong_Type
+#define PyString_Type PySlice_Type
+#endif
+
 namespace cf3 {
 namespace python {
 

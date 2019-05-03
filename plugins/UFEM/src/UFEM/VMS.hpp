@@ -43,7 +43,7 @@ class UFEM_API VMS : public LSSActionUnsteady
 {
 public: // functions
 
-  /// Contructor
+  /// Constructor
   /// @param name of the component
   VMS ( const std::string& name );
   
@@ -61,8 +61,8 @@ private:
   /// 
   void set_expression();
 
-  /// AlphaF, AlphaM, Gamma coefficients for the alpha-method
-  Real m_alphaF, m_alphaM, m_gamma;
+  /// AlphaM, AlphaF, Gamma coefficients for the alpha-method
+  Real m_alphaM, m_alphaF, m_gamma;
 
   /// Storage of the stabilization coefficients
   Real tau_su, tau_c, tau_m;
@@ -74,35 +74,35 @@ private:
   FieldVariable<6, ScalarField> p1;
   
 
-  // SFOp< CustomSFOp<VectorLSSVector> > a;
-  // SFOp< CustomSFOp<ScalarLSSVector> > delta_p_sum;
-  // /// LSS for the velocity & pressure
-  // Handle<LSSAction> u_lss;
-  // Handle<LSSActionUnsteady> p_lss;
-  // // Actions that handle different stages of assembly, used by the set_elements_expressions function
-  // Handle<common::Component> m_velocity_assembly;
-  // Handle<common::Component> m_u_rhs_assembly;Handle<common::Component> m_p_rhs_assembly;
-  // Handle<common::Component> m_p_rhs;
-  // Handle<common::Component> m_pressure_assembly;
-  // Handle<common::Component> m_p_strategy_first;
-  // Handle<common::Component> m_p_strategy_second;
-  // Handle<common::Component> solve_p_lss;
-  // Handle<common::Component> m_apply_aup;
+  SFOp< CustomSFOp<VectorLSSVector> > a;
+  SFOp< CustomSFOp<ScalarLSSVector> > delta_p_sum;
+  /// LSS for the velocity & pressure
+  Handle<LSSAction> u_lss;
+  Handle<LSSActionUnsteady> p_lss;
+  // Actions that handle different stages of assembly, used by the set_elements_expressions function
+  Handle<common::Component> m_velocity_assembly;
+  Handle<common::Component> m_u_rhs_assembly;Handle<common::Component> m_p_rhs_assembly;
+  Handle<common::Component> m_p_rhs;
+  Handle<common::Component> m_pressure_assembly;
+  Handle<common::Component> m_p_strategy_first;
+  Handle<common::Component> m_p_strategy_second;
+  Handle<common::Component> solve_p_lss;
+  Handle<common::Component> m_apply_aup;
 
-  // // Time component
-  // Handle<solver::Time> m_time;
+  // Time component
+  Handle<solver::Time> m_time;
 
 
 
   // /// Time step
   // Real dt;
     
-  // /// LSS for the pressure
-  // Handle<InitialConditions> m_initial_conditions;
+  /// LSS for the pressure
+  Handle<InitialConditions> m_initial_conditions;
 
-  // // Actions that handle different stages of assembly, used by the set_elements_expressions function
-  // Handle<common::Component> m_mass_matrix_assembly;
-  // Handle<common::Component> m_inner_loop;
+  // Actions that handle different stages of assembly, used by the set_elements_expressions function
+  Handle<common::Component> m_mass_matrix_assembly;
+  Handle<common::Component> m_inner_loop;
 
 };
 
