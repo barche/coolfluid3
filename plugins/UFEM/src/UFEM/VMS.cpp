@@ -183,7 +183,7 @@ void VMS::set_expression()
     group
     (
       _A = _0, _a = _0,
-      compute_tau(),
+      // compute_tau(),
       // compute_tau(u, nu_eff, lit(dt()), lit(tau_su)),
       element_quadrature
       (
