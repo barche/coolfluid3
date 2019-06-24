@@ -20,7 +20,7 @@
 
 #include "ui/core/LibCore.hpp"
 
-namespace boost { namespace asio { class io_service; } }
+namespace boost { namespace asio { class io_context; } }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -95,7 +95,7 @@ private: // data
 
   common::SignalArgs m_buffer;
 
-  boost::asio::io_service * m_io_service;
+  boost::asio::io_context * m_io_service;
 
   boost::asio::ip::tcp::endpoint * m_endpoint;
 
