@@ -23,13 +23,10 @@
 #define BOOST_MPL_LIMIT_METAFUNCTION_ARITY 10
 
 #include <boost/scoped_ptr.hpp>
-
+#include "ns_semi_implicit/LSSVectorOps.hpp"
 #include "LibUFEM.hpp"
 #include "LSSActionUnsteady.hpp"
-
 #include "SUPG.hpp"
-
-#include "ns_semi_implicit/LSSVectorOps.hpp"
 
 namespace cf3 {
 
@@ -61,48 +58,79 @@ private:
   /// 
   void set_expression();
 
+  /// Corrector number of iterations 
+  int nb_iterations;
+
   /// AlphaM, AlphaF, Gamma coefficients for the alpha-method
   Real m_alphaM, m_alphaF, m_gamma;
 
   /// Storage of the stabilization coefficients
-  Real tau_su, tau_c, tau_m;
+  Real tau_c, tau_m;
 
   /// Variables
-  /// 
-  FieldVariable<5, VectorField> u_dot1;
-  /// The pressure solution field at time n-1
-  FieldVariable<6, ScalarField> p1;
+  /// Solution fields at time n+1
+  FieldVariable<5, VectorField> u1;
+  FieldVariable<6, VectorField> u1Dot;
+  FieldVariable<7, ScalarField> p1;
+  /// Solution fields at time n+alpha{F,M}
+  FieldVariable<8, VectorField> uaF;
+  FieldVariable<9, VectorField> uaMDot;
+  FieldVariable<10, VectorField> bf;
+
+  /// Data members are public, because these are initialized where appropriate
+  Handle<math::LSS::System> u_lss;
+  Handle<math::LSS::System> p_lss;
+  // Handle<LSSAction> u_lss;
+  // Handle<LSSActionUnsteady> p_lss;
   
+  Handle<math::LSS::SolveLSS> solve_p_lss;
+  Handle<math::LSS::SolveLSS> solve_u_lss;
+  
+  Handle<common::Action> pressure_bc;
+  Handle<common::Action> velocity_bc;
+  Handle<common::Action> inner_bc;
+  Handle<common::Action> m_velocity_assembly;
 
-  SFOp< CustomSFOp<VectorLSSVector> > a;
-  SFOp< CustomSFOp<ScalarLSSVector> > delta_p_sum;
-  /// LSS for the velocity & pressure
-  Handle<LSSAction> u_lss;
-  Handle<LSSActionUnsteady> p_lss;
-  // Actions that handle different stages of assembly, used by the set_elements_expressions function
-  Handle<common::Component> m_velocity_assembly;
-  Handle<common::Component> m_u_rhs_assembly;Handle<common::Component> m_p_rhs_assembly;
-  Handle<common::Component> m_p_rhs;
-  Handle<common::Component> m_pressure_assembly;
-  Handle<common::Component> m_p_strategy_first;
-  Handle<common::Component> m_p_strategy_second;
-  Handle<common::Component> solve_p_lss;
-  Handle<common::Component> m_apply_aup;
-
-  // Time component
-  Handle<solver::Time> m_time;
-
-
-
-  // /// Time step
-  // Real dt;
-    
   /// LSS for the pressure
-  Handle<InitialConditions> m_initial_conditions;
+  // Handle<InitialConditions> m_initial_conditions;
 
-  // Actions that handle different stages of assembly, used by the set_elements_expressions function
-  Handle<common::Component> m_mass_matrix_assembly;
-  Handle<common::Component> m_inner_loop;
+  /// Actions that handle different stages of assembly, used by the set_elements_expressions function
+  // Handle<common::Component> m_mass_matrix_assembly;
+  // Handle<common::Component> m_inner_loop;
+
+  Handle< math::LSS::Vector > u;
+  Handle< math::LSS::Vector > a;
+  // SFOp< CustomSFOp<VectorLSSVector> > a;
+  Handle< math::LSS::Vector > p;
+  Handle< math::LSS::Vector > delta_p_sum;
+  // SFOp< CustomSFOp<ScalarLSSVector> > delta_p_sum;
+  Handle< math::LSS::Vector > lumped_m_diag;
+
+  Teuchos::RCP<const Thyra::LinearOpBase<Real> > lumped_m_op;
+  Teuchos::RCP<Thyra::VectorBase<Real> > delta_a;
+  Teuchos::RCP<Thyra::VectorBase<Real> > aup_delta_p; // This is actually u_lss->rhs()
+  
+  Handle<solver::Time> m_time;
+  
+  /// These are used when alternating the solution strategies between predictor and corrector steps
+  Handle<math::LSS::SolutionStrategy> m_p_strategy_first;
+  Handle<math::LSS::SolutionStrategy> m_p_strategy_second;
+
+  Handle<solver::ActionDirector> m_u_rhs_assembly;
+  Handle<solver::ActionDirector> m_p_rhs_assembly;
+  Handle<solver::ActionDirector> m_apply_aup;
+
+  /// LSS for the velocity & pressure
+  /// Actions that handle different stages of assembly, used by the set_elements_expressions function
+  // Handle<common::Component> m_velocity_assembly;
+  // Handle<common::Component> m_u_rhs_assembly;
+  // Handle<common::Component> m_p_rhs_assembly;
+  // Handle<common::Component> m_p_rhs;
+  // Handle<common::Component> m_pressure_assembly;
+  // Handle<common::Component> m_p_strategy_first;
+  // Handle<common::Component> m_p_strategy_second;
+  // Handle<common::Component> solve_p_lss;
+  // Handle<common::Component> m_apply_aup;
 
 };
 
