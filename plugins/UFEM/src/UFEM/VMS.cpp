@@ -58,7 +58,13 @@ VMS::VMS(const std::string& name) :
   m_alphaM(0.5), // Values from (43,84) p. 182 from Bazilevs 2007
   m_alphaF(0.5),
   m_gamma(0.5),
-  nb_iterations(2)
+  nb_iterations(2),
+  u1("u1", "velocityNew"), // computed
+  u1Dot("u1Dot", "accelNew"),
+  p1("p1", "pressureNew"), // computed
+  uaF("uaF", "velocityAlphaF"), // computed
+  uaMDot("uaMDot", "accelAlphaM"), // computed
+  f("f","source_term")
 {
   options().add("alphaM", m_alphaM)
     .description("alphaM")
@@ -80,24 +86,19 @@ VMS::VMS(const std::string& name) :
   options().add("nb_iterations", nb_iterations)
     .pretty_name("number of iterations")
     .description("Number of inner loop iterations");
-    // .attach_trigger(boost::bind(&VMS::trigger_scalar_name, this));
+  
+  set_solution_tag("vms_solution");
 
-  // options().add("velocity_tag", "navier_stokes_solution")
-  //   .pretty_name("Velocity Tag")
-  //   .description("Tag for the velocity field")
-  //   .attach_trigger(boost::bind(&VMS::trigger_scalar_name, this));
-
-  set_solution_tag("variational_multiscale_solution");
-
-  create_component<ProtoAction>("Predictor");
-  create_component<ProtoAction>("CorrectorInitialiser");
-  create_component<math::LSS::ZeroLSS>("ZeroLSS");
-  create_component<ProtoAction>("Assembly");
-  create_component<BoundaryConditions>("BoundaryConditions")->set_solution_tag(solution_tag());
-  create_component<math::LSS::SolveLSS>("SolveLSS");
-  create_component<ProtoAction>("Update");
-
-  get_child("BoundaryConditions")->mark_basic();
+  predictor = create_component<ProtoAction>("Predictor");
+  correctorInitialiser = create_component<ProtoAction>("CorrectorInitialiser");
+  zeroLSS = create_component<math::LSS::ZeroLSS>("ZeroLSS");
+  assembly = create_component<ProtoAction>("Assembly");
+  /// Handle to convert ProtoAction to BoundaryCondition
+  bc = create_component<BoundaryConditions>("BoundaryConditions");
+  bc->mark_basic();
+  bc->set_solution_tag(solution_tag());
+  solveLSS = create_component<math::LSS::SolveLSS>("SolveLSS");
+  update = create_component<ProtoAction>("Update");
 
   /// Set the default scalar name
   set_expression();
@@ -155,45 +156,42 @@ void VMS::set_expression()
   > AllowedElementTypesT;
 
   /// Scalar name is obtained from an option
-  FieldVariable<1, VectorField> u("Velocity","navier_stokes_u");
-  FieldVariable<2, VectorField> uDot("Velocity_dot","navier_stokes_uDot");
-  FieldVariable<3, ScalarField> p("Pressure", "navier_stokes_p");
-  FieldVariable<4, ScalarField> nu_eff("EffectiveViscosity", "navier_stokes_viscosity");
+  FieldVariable<1, VectorField> u("u", solution_tag());
+  FieldVariable<2, VectorField> uDot("uDot","vms_uDot");
+  FieldVariable<3, ScalarField> p("p", solution_tag());
+  FieldVariable<4, ScalarField> nu_eff("EffectiveViscosity","navier_stokes_viscosity");
+  
   /// Solution fields computed from assembly
-  FieldVariable<11, VectorField> Du1Dot("VelocityDotVariation","navier_stokes_solution");
-  FieldVariable<12, ScalarField> Dp1("PressureVariation","navier_stokes_solution");
+  FieldVariable<11, VectorField> Du1Dot("Du1Dot","vms_solution1");
+  FieldVariable<12, ScalarField> Dp1("Dp1","vms_solution1");
 
-  // FieldVariable<0, ScalarField> phi(options().value<std::string>("scalar_name"), solution_tag());
-  // PhysicsConstant nu_lam("kinematic_viscosity");
-  // ConfigurableConstant<Real> relaxation_factor_scalar("relaxation_factor_scalar", "factor for relaxation in case of coupling", 1.);
-
-  Handle<ProtoAction>(get_child("Predictor"))->set_expression( nodes_expression(
-    group
-    (
+  predictor->set_expression( nodes_expression(
+    group(
       u1 = u,
       u1Dot = (m_gamma-1)/m_gamma * uDot,
-      p1 = p
+      p1 = p,
+      _cout << "yop: u1: " << u1 << ", u1Dot: " << u1Dot << "\n"
     )
   ));
 
-  Handle<ProtoAction>(get_child("CorrectorInitialiser"))->set_expression( nodes_expression(
-    group
-    (
+  correctorInitialiser->set_expression( nodes_expression(
+    group(
       uaMDot = uDot + m_alphaM * (u1Dot - uDot),
       uaF = u + m_alphaF * (u1 - u),
-      p1 = p1
+      p1 = p1,
+      _cout << "yop: uaMDot: " << uaMDot << ", uaF: " << uaF << "\n"
     )
   ));
 
   /// Set the proto expression that handles the assembly
-  Handle<ProtoAction>(get_child("Assembly"))->set_expression(elements_expression(
-    AllowedElementTypesT(),
-    group
-    (
+  assembly->set_expression( elements_expression(
+    AllowedElementTypesT(), 
+    group(
       _A = _0, _a = _0,
       // compute_tau(),
       // compute_tau(u, nu_eff, lit(dt()), lit(tau_su)),
-      element_quadrature
+
+/*       element_quadrature
       (
         /// K (p.183 - eq.102)
         _A(Du1Dot[_i],Du1Dot[_j]) += \
@@ -223,108 +221,70 @@ void VMS::set_expression()
       // system_matrix += invdt() * _T + m_theta * _A,
       system_matrix += _A,
       system_rhs += -_A * _x + _a
+ */
+
+      element_quadrature // Integration over the element
+      (
+        _A(u[_i],u[_i]) += transpose(nabla(u)) * nabla(u),
+        _a[u[_i]] += transpose(N(u)) * f,
+        _A(p,p) += transpose(nabla(p)) * nabla(p),
+        _a[p] += transpose(N(p)) * f
+
+      ),
+      system_matrix +=  _A, // Assemble into the global linear system
+      system_rhs += _a,
+      _cout << "_A= " << _A << "\n",
+      _cout << "_a= " << _a << "\n"
+    )
+  ));
+ 
+  /// Set the proto expression for the update step
+  update->set_expression( nodes_expression(
+    group(
+      u = solution(u),
+      p = solution(p),
+      _cout << "yop: u: " << u << ", p: " << p << "\n"
     )
   ));
 
+/*
   /// Set the proto expression for the update step
-  Handle<ProtoAction>(get_child("Update"))->set_expression( nodes_expression(
+  update->set_expression( nodes_expression(
     group(
       u1Dot += solution(Du1Dot),
       u1 += m_gamma * lit(dt()) * solution(Du1Dot),
       p1 += solution(Dp1)
     )
   ));
+*/
 }
 
 void VMS::execute() /// derived from NavierStokesSemiImplicit.cpp
 {
-  typedef std::pair<Uint,Uint> BlockrowIdxT;
+  // typedef std::pair<Uint,Uint> BlockrowIdxT;
   
-  a->reset(0.);
-  delta_p_sum->reset(0.);
-  u->assign(*u_lss->solution());
-  p->assign(*p_lss->solution());    
+  // predictor->execute();
   for(Uint i = 0; i != nb_iterations; ++i)
   {
-    u_lss->rhs()->reset(0.);
-    /// Computing m_velocity_assembly in the loop. Modified for the ABL implementation.
-    u_lss->matrix()->reset(0.);
-    m_velocity_assembly->execute();
-
-    /// Velocity system: compute delta_a_star
-    m_u_rhs_assembly->execute();
+    // correctorInitialiser->execute();
+    zeroLSS->execute();
+    assembly->execute();
+    Handle<math::LSS::System> lss(get_child("LSS"));
     if(i == 0) /// Apply velocity BC the first inner iteration
     {
-      u_lss->rhs()->scale(m_time->dt());
-      velocity_bc->execute();
+      lss->rhs()->scale(dt());
+      bc->execute();
       /// The velocity BC deals with velocity, so we need to write this in terms of acceleration
-      u_lss->rhs()->scale(1./m_time->dt());
+      lss->rhs()->scale(1./dt());
     }
-    else /// Zero boundary condition after first pass. Modified for the ABL implementation.
+    else /// Zero boundary condition after first pass
     {
-      velocity_bc->execute();
-      u_lss->dirichlet_apply(true, true);
+      bc->execute();
+      lss->dirichlet_apply(true, true);
     }
-
-    inner_bc->execute(); /// Inner Boundary Condition for the RHS implementation of ABL.
-    // u_lss->matrix()->print(std::cout); /// Print m_velocity_assembly
-
-    u_lss->solution()->reset(0.);
-    CFdebug << "Solving velocity LSS..." << CFendl;
-    solve_u_lss->execute();
-    u_lss->solution()->sync();
-
-    /// Pressure system: compute delta_p
-    p_lss->rhs()->reset(0.);
-    m_p_rhs_assembly->execute();
-    p_lss->solution()->reset(0.);
-
-    /// Apply BC if the first iteration, set RHS to 0 otherwise
-    if(i ==0)
-    {
-      pressure_bc->execute();
-    }
-    else
-    {
-      BOOST_FOREACH(const BlockrowIdxT& diri_idx, Handle<math::LSS::TrilinosCrsMatrix>(p_lss->matrix())->get_dirichlet_nodes())
-      {
-        p_lss->rhs()->set_value(diri_idx.first, diri_idx.second, 0.);
-      }
-    }
-
-    CFdebug << "Solving pressure LSS..." << CFendl;
-    if(i == 0 && is_not_null(m_p_strategy_first))
-    {
-      p_lss->options().set("solution_strategy_component", m_p_strategy_first);
-    }
-    else if (i > 0 && is_not_null(m_p_strategy_second))
-    {
-      p_lss->options().set("solution_strategy_component", m_p_strategy_second);
-    }
-    solve_p_lss->execute();
-    p_lss->solution()->sync();
-
-    /// Compute delta_a
-    u_lss->rhs()->reset(0.);
-    m_apply_aup->execute(); /// Compute Aup*delta_p (stored in u_lss RHS)
-    /// delta_a is delta_a_star for the dirichlet nodes
-    BOOST_FOREACH(const BlockrowIdxT& diri_idx, Handle<math::LSS::TrilinosCrsMatrix>(u_lss->matrix())->get_dirichlet_nodes())
-    {
-      u_lss->rhs()->set_value(diri_idx.first, diri_idx.second, 0.);
-    }
-    Thyra::apply(*lumped_m_op, Thyra::NOTRANS, *aup_delta_p, delta_a.ptr(), -1., 1.); /// delta_a = delta_a_star - Ml_inv*Aup*delta_p
-    u_lss->solution()->sync(); /// delta_a is a link to u_lss->solution(), so it needs a sync after matrix apply
-  
-    const math::LSS::Vector& da = *u_lss->solution();
-    const math::LSS::Vector& dp = *p_lss->solution();
-    
-    a->update(da);
-    u->update(da, m_time->dt());
-    p->update(dp);
-    delta_p_sum->update(dp);
+    solveLSS->execute();
+    update->execute();
   }
-  u_lss->solution()->assign(*u);
-  p_lss->solution()->assign(*p);
 }
 
 } /// UFEM
