@@ -85,7 +85,9 @@ VMS::VMS(const std::string& name) :
 
   options().add("nb_iterations", nb_iterations)
     .pretty_name("number of iterations")
-    .description("Number of inner loop iterations");
+    .description("Number of inner loop iterations")
+    .link_to(&nb_iterations);
+
   
   set_solution_tag("vms_solution");
 
@@ -170,16 +172,17 @@ void VMS::set_expression()
       u1 = u,
       u1Dot = (m_gamma-1)/m_gamma * uDot,
       p1 = p,
-      _cout << "yop: u1: " << u1 << ", u1Dot: " << u1Dot << "\n"
+      _cout << "yop: u1: " << transpose(u1) << ", u1Dot: " << transpose(u1Dot) << "\n"
     )
   ));
+  std::cout << predictor->tree() << std::endl;
 
   correctorInitialiser->set_expression( nodes_expression(
     group(
       uaMDot = uDot + m_alphaM * (u1Dot - uDot),
       uaF = u + m_alphaF * (u1 - u),
-      p1 = p1,
-      _cout << "yop: uaMDot: " << uaMDot << ", uaF: " << uaF << "\n"
+      p1 = p1
+      // _cout << "yop: uaMDot: " << uaMDot << ", uaF: " << uaF << "\n"
     )
   ));
 
@@ -242,8 +245,8 @@ void VMS::set_expression()
   update->set_expression( nodes_expression(
     group(
       u = solution(u),
-      p = solution(p),
-      _cout << "yop: u: " << u << ", p: " << p << "\n"
+      p = solution(p)
+      // _cout << "yop: u: " << u << ", p: " << p << "\n"
     )
   ));
 
@@ -263,11 +266,14 @@ void VMS::execute() /// derived from NavierStokesSemiImplicit.cpp
 {
   // typedef std::pair<Uint,Uint> BlockrowIdxT;
   
-  // predictor->execute();
+  predictor->execute();
+  std::cout << "yop: nb_iterations: " << nb_iterations << std::endl;
+
   for(Uint i = 0; i != nb_iterations; ++i)
   {
-    // correctorInitialiser->execute();
-    zeroLSS->execute();
+    // todo: Corrector deactivated
+    correctorInitialiser->execute();
+    // zeroLSS->execute();
     assembly->execute();
     Handle<math::LSS::System> lss(get_child("LSS"));
     if(i == 0) /// Apply velocity BC the first inner iteration
