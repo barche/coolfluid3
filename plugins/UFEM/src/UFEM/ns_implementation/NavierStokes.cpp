@@ -97,6 +97,21 @@ NavierStokes::NavierStokes(const std::string& name) :
     .description("Control the skew symmetric term (0 = no skew symmetry, 1 = skew symmetry)")
     .link_to(&skew);
 
+  options().add("alpha_ps", compute_tau.data.op.alpha_ps)
+    .pretty_name("alpha_ps")
+    .description("Constant to multiply the PSPG parameter with.")
+    .link_to(&(compute_tau.data.op.alpha_ps));
+      
+  options().add("alpha_su", compute_tau.data.op.alpha_su)
+    .pretty_name("alpha_su")
+    .description("Constant to multiply the SUPG parameter with.")
+    .link_to(&(compute_tau.data.op.alpha_su));
+      
+  options().add("alpha_bu", compute_tau.data.op.alpha_bu)
+    .pretty_name("alpha_bu")
+    .description("Constant to multiply the Bulk parameter with.")
+    .link_to(&(compute_tau.data.op.alpha_bu));
+
   set_solution_tag("navier_stokes_solution");
 
   // This ensures that the linear system matrix is reset to zero each timestep

@@ -55,8 +55,14 @@ void NavierStokes::set_assembly_expression(const std::string& action_name)
           element_quadrature
           (
             _A(p    , u[_i]) += transpose(N(p) + tau_ps*u_adv*skew*nabla(p)*0.5) * nabla(u)[_i] + tau_ps * transpose(nabla(p)[_i]) * u_adv*nabla(u), // Standard continuity + PSPG for advection
+
+            
             _A(p    , p)     += tau_ps * transpose(nabla(p)) * nabla(p), // Continuity, PSPG
+
+
             _A(u[_i], u[_i]) += nu_eff * transpose(nabla(u)) * nabla(u) + transpose(N(u) + tau_su*u_adv*nabla(u)) * u_adv*nabla(u), // Diffusion + advection
+
+
             _A(u[_i], p)     += transpose(N(u) + tau_su*u_adv*nabla(u)) * nabla(p)[_i], // Pressure gradient (standard and SUPG)
             _A(u[_i], u[_j]) += transpose(tau_bulk*nabla(u)[_i] // Bulk viscosity
                                 + 0.5*u_adv[_i]*(N(u) + tau_su*u_adv*nabla(u))) * nabla(u)[_j] * skew,  // skew symmetric part of advection (standard +SUPG)
@@ -75,7 +81,17 @@ void NavierStokes::set_assembly_expression(const std::string& action_name)
         ),
         system_rhs += -_A * _x + _a,
         _A(p) = _A(p) / theta,
-        system_matrix += invdt() * _T + theta * _A
+        system_matrix += invdt() * _T + theta * _A,
+        _cout << "_A= \n" << _A << "\n\n" \
+              << "_T= \n" << _T << "\n\n" \
+              << "invdt*_T+theta*_A= \n" \
+              << invdt() * _T + theta * _A << "\n\n" \
+              << "theta= " << theta << "\n" \
+              << "invdt()= " << invdt() << "\n" \
+              << "tau_su= " << tau_su << "\n" \
+              << "tau_ps= " << tau_ps << "\n" \
+              << "tau_bulk= " << tau_bulk << "\n" \
+              << "_a= " << transpose(_a) << "\n"
       )
     )
   ));

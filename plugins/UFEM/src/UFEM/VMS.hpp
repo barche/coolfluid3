@@ -58,30 +58,29 @@ private:
   /// 
   void set_expression();
 
+  /// Called when the initial condition manager is changed
+  virtual void on_initial_conditions_set(InitialConditions& initial_conditions) override;
+
   /// Corrector number of iterations 
-  int nb_iterations;
+  int m_nb_iterations;
 
   /// AlphaM, AlphaF, Gamma coefficients for the alpha-method
   Real m_alphaM, m_alphaF, m_gamma;
 
   /// Storage of the stabilization coefficients
-  Real tau_c, tau_m;
+  Real m_tau_c, m_tau_m, m_c1;
+  bool m_dynTau;
 
   /// Variables
-  // FieldVariable<4, ScalarField> nu_eff;
-  // FieldVariable<10, VectorField> bf;
-  // /// Solution fields computed from assembly
-  // FieldVariable<11, VectorField> Du1Dot;
-  // FieldVariable<12, ScalarField> Dp1;
+  FieldVariable<2, VectorField> m_uDot;
 
   /// Solution fields at time n+1
-  FieldVariable<5, VectorField> u1;
-  FieldVariable<6, VectorField> u1Dot;
-  FieldVariable<7, ScalarField> p1;
+  FieldVariable<7, VectorField> m_u1;
+
   /// Solution fields at time n+alpha{F,M}
-  FieldVariable<8, VectorField> uaF;
-  FieldVariable<9, VectorField> uaMDot;
-  FieldVariable<10, ScalarField> f;
+  FieldVariable<8, VectorField> m_uaF;
+  FieldVariable<9, VectorField> m_uaMDot;
+  FieldVariable<10, ScalarField> m_f;
   /// Data members are public, because these are initialized where appropriate
   // Handle<math::LSS::System> u_lss;
   // Handle<math::LSS::System> p_lss;
@@ -96,15 +95,17 @@ private:
   
   // Handle<solver::Time> m_time;
 
-  Handle<solver::actions::Proto::ProtoAction> predictor;
-  Handle<solver::actions::Proto::ProtoAction> correctorInitialiser;
-  Handle<common::Action> zeroLSS;
-  Handle<solver::actions::Proto::ProtoAction> assembly;
-  Handle<BoundaryConditions> bc;
+  Handle<solver::actions::Proto::ProtoAction> m_predictor;
+  Handle<solver::actions::Proto::ProtoAction> m_correctorInitialiser;
+  Handle<common::Action> m_initial_conditions;
+  // Handle<common::Action> m_zeroLSS;
+  Handle<solver::actions::Proto::ProtoAction> m_assembly;
+  Handle<BoundaryConditions> m_bc;
   // Handle<common::Action> solveLSS;
-  Handle<math::LSS::SolveLSS> solveLSS;
-  Handle<solver::actions::Proto::ProtoAction> update;
-
+  Handle<math::LSS::SolveLSS> m_solveLSS;
+  Handle<solver::actions::Proto::ProtoAction> m_update;
+  Handle<solver::actions::Proto::ProtoAction> m_renew;
+  
 /*
   Handle< math::LSS::Vector > u;
   Handle< math::LSS::Vector > a;
