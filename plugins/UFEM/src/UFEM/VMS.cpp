@@ -271,20 +271,25 @@ void VMS::set_expression()
       (
         /// K (p.183 - eq.102)
         _A(m_u1Dot[_i],m_u1Dot[_i]) += lit(m_alphaM) * transpose(N(m_u1Dot)) * N(m_u1Dot) * lit(0) \
-          + lit(m_alphaM) * (transpose(u * m_tau_m * nabla(m_u1Dot)) * N(m_u1Dot)) \
+          + lit(m_alphaM) * transpose(u * m_tau_m * nabla(m_u1Dot)) * N(m_u1Dot) \
+
+
           + lit(m_alphaF) * lit(m_gamma) * lit(dt()) * transpose(N(m_u1Dot)) * u * nabla(m_u1Dot) \
           + lit(m_alphaF) * lit(m_gamma) * lit(dt()) * transpose(nabla(m_u1Dot) * nu_eff) * nabla(m_u1Dot) \
+          
+                    
           + lit(m_alphaF) * lit(m_gamma) * lit(dt()) * transpose(u * nabla(m_u1Dot) * m_tau_m) * (u * nabla(m_u1Dot)),
 
         // _A(m_u1Dot[_i],m_u1Dot[_j]) += \
         //   lit(m_alphaF) * lit(m_gamma) * lit(dt()) * transpose(nabla(m_u1Dot)[_j]) * nu_eff * nabla(m_u1Dot)[_i] \
         //   + lit(m_alphaF) * lit(m_gamma) * lit(dt()) * transpose(nabla(m_u1Dot)[_i]) * m_tau_c * nabla(m_u1Dot)[_j],
-        
+
+
         /// G (eq.104)
-        // _A(m_u1Dot[_i],m_p1) +=  - transpose(nabla(m_u1Dot)[_i]) *  N(m_p1) \
-        //   + transpose(transpose(u) * m_tau_m * nabla(m_u1Dot)[_i]) * nabla(m_p1),
         //? Transposed the complete matrix to have 0 on the last column !?
         //? minus added in front of the whole expr to correspond to SUPG !?
+        //TODO 2nd term, not transpose(u) but u (to match with SUPG)
+        //TODO 2nd term: [_i] to move to nabla(m_p1)
         _A(m_u1Dot[_i],m_p1) +=  - transpose( \
           -transpose(nabla(m_u1Dot)[_i]) *  N(m_p1) \
           + transpose(transpose(u) * m_tau_m * nabla(m_u1Dot)[_i]) * nabla(m_p1) \
