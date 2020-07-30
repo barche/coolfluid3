@@ -35,20 +35,21 @@ wale = ns_solver = solver.add_unsteady_solver('cf3.UFEM.les.WALE')
 # Add the Navier-Stokes solver as an unsteady solver
 ns_solver = solver.add_unsteady_solver('cf3.UFEM.NavierStokesSemiImplicit')
 ns_solver.options.theta = 0.5
-ns_solver.options.nb_iterations = 1
+ns_solver.options.nb_iterations = 2 # minimum 2 iterations to activate the corrector loop
 ns_solver.enable_body_force = True
-ns_solver.options.pressure_rcg_solve = True
-ns_solver.VelocityLSS.Assembly.interval = 100
+ns_solver.options.pressure_rcg_solve = False
+ns_solver.PressureLSS.solution_strategy = 'cf3.math.LSS.DirectStrategy'
+ns_solver.VelocityLSS.Assembly.interval = 1 # bigger value are only possible if the physics does not change significantly. Else, it will diverge.
 
-tstep = 0.025
+tstep = 0.02
 
-y_segs = 32
+y_segs = 16 #32
 
 x_size = 4.*pi*h
 z_size = 4./3.*pi*h
 
-x_segs = 32
-z_segs = 32
+x_segs = y_segs
+z_segs = y_segs
 
 ungraded_h = h#float(y_segs)
 
@@ -88,7 +89,10 @@ right_patch = blocks.create_patch_nb_faces(name = 'right', nb_faces = 2)
 right_patch[0] = [1, 3]
 right_patch[1] = [3, 5]
 
+blocks.periodic_x = ["left", "right"]
+
 blocks.extrude_blocks(positions=[z_size], nb_segments=[z_segs], gradings=[1.])
+blocks.periodic_z = ["front", "back"]
 
 nb_procs = cf.Core.nb_procs()
 
@@ -115,22 +119,6 @@ create_point_region.region_name = 'center'
 create_point_region.mesh = mesh
 create_point_region.execute()
 
-partitioner = domain.create_component('Partitioner', 'cf3.mesh.actions.PeriodicMeshPartitioner')
-partitioner.load_balance = False
-partitioner.mesh = mesh
-
-link_horizontal = partitioner.create_link_periodic_nodes()
-link_horizontal.source_region = mesh.topology.right
-link_horizontal.destination_region = mesh.topology.left
-link_horizontal.translation_vector = [-x_size, 0., 0.]
-
-link_spanwise = partitioner.create_link_periodic_nodes()
-link_spanwise.source_region = mesh.topology.back
-link_spanwise.destination_region = mesh.topology.front
-link_spanwise.translation_vector = [0., 0., -z_size]
-
-partitioner.execute()
-
 #domain.write_mesh(cf.URI('chan180-init.cf3mesh'))
 
 # Physical constants
@@ -140,18 +128,18 @@ physics.dynamic_viscosity = nu
 wale.regions = [mesh.topology.uri()]
 ns_solver.regions = [mesh.topology.uri()]
 
-#lss = ns_solver.PressureLSS.LSS
-#lss.SolutionStrategy.solver_type = 'Amesos_Mumps'
+lss = ns_solver.PressureLSS.LSS
+lss.SolutionStrategy.solver_type = 'Amesos_Mumps'
 
-for strat in [ns_solver.children.FirstPressureStrategy, ns_solver.children.SecondPressureStrategy]:
-  strat.MLParameters.aggregation_type = 'Uncoupled'
-  strat.MLParameters.max_levels = 4
-  strat.MLParameters.smoother_sweeps = 3
-  strat.MLParameters.coarse_type = 'Amesos-KLU'
-  strat.MLParameters.add_parameter(name = 'repartition: start level', value = 0)
-  strat.MLParameters.add_parameter(name = 'repartition: max min ratio', value = 1.1)
-  strat.MLParameters.add_parameter(name = 'aggregation: aux: enable', value = True)
-  strat.MLParameters.add_parameter(name = 'aggregation: aux: threshold', value = 0.005)
+# for strat in [ns_solver.children.FirstPressureStrategy, ns_solver.children.SecondPressureStrategy]:
+#   strat.MLParameters.aggregation_type = 'Uncoupled'
+#   strat.MLParameters.max_levels = 4
+#   strat.MLParameters.smoother_sweeps = 3
+#   strat.MLParameters.coarse_type = 'Amesos-KLU'
+#   strat.MLParameters.add_parameter(name = 'repartition: start level', value = 0)
+#   strat.MLParameters.add_parameter(name = 'repartition: max min ratio', value = 1.1)
+#   strat.MLParameters.add_parameter(name = 'aggregation: aux: enable', value = True)
+#   strat.MLParameters.add_parameter(name = 'aggregation: aux: threshold', value = 0.005)
 
 lss = ns_solver.VelocityLSS.LSS
 lss.SolutionStrategy.preconditioner_reset = 100
@@ -219,8 +207,7 @@ print_timings.root = model
 
 # Time setup
 time = model.create_time()
-tstep = 0.02
-time.end_time = 5.*tstep
+time.end_time = 3.*tstep
 time.time_step = tstep
 
 solver.InitialConditions.execute()
