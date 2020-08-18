@@ -11,7 +11,7 @@
 
 #include <boost/test/framework.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 
 #include "common/Timer.hpp"
 
