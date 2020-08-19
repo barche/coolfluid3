@@ -4,6 +4,8 @@ coolfluid3_add_library(TARGET coolfluid_ufem_les
     WALE.cpp
     LibUFEMLES.hpp
     LibUFEMLES.cpp
+    dynSmagorinsky.hpp
+    dynSmagorinsky.cpp
     smagorinsky.hpp
     smagorinsky.cpp
   LIBS     
