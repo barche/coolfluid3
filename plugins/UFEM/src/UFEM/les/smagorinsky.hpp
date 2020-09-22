@@ -12,6 +12,7 @@
 #include "../InitialConditions.hpp"
 
 #include "LibUFEMLES.hpp"
+#include "mesh/ConnectivityData.hpp"
 #include "solver/actions/Proto/ProtoAction.hpp"
 #include "solver/actions/Proto/Expression.hpp"
 
@@ -61,7 +62,46 @@ inline void aspect_ratios(const Real d1, const Real d2, const Real d3, Real& a1,
     a2 = d2/d3;
   }
 }
+
+template<typename UT>
+inline std::set<Uint> get_neighbourElts(std::set<Uint>& neighbourElts, const UT& u, const mesh::NodeConnectivity* m_node_connectivity)
+{
+  const auto element_nodes = u.support().element_connectivity();
+  // UT neighbour_u = u;
+
+  // CFdebug << "looking up adjacent elements for element " << u.support().element_idx() << CFendl;
+  for(Uint node_idx : element_nodes)
+  {
+    // CFdebug << "Elements next to node " << node_idx << ": ";
+    const Uint elements_begin = m_node_connectivity->node_first_elements()[node_idx];
+    const Uint elements_end = elements_begin + m_node_connectivity->node_element_counts()[node_idx];
+    for(Uint j = elements_begin; j != elements_end; ++j)
+    {
+      // CFdebug << " (" << m_node_connectivity->node_elements()[j].first << "," << m_node_connectivity->node_elements()[j].second <<")";
+      // neighbour_u.set_element(m_node_connectivity->node_elements()[j].second); // only one type of elt considered
+      neighbourElts.insert(m_node_connectivity->node_elements()[j].second);
+    }
+    // CFdebug << CFendl;
+  }
+  // CFdebug << CFendl;
   
+  /// Check the number of neighbouring elts:
+  // CFdebug << "Confirmation: Elements are: ";
+  // for (auto i = neighbourElts.begin(); i != neighbourElts.end(); i++)
+  //   CFdebug << *i << " ";
+  // CFdebug << CFendl;
+
+  return neighbourElts;
+}
+  
+// Helper to get the transpose of either a vector or a scalar
+template<typename T>
+inline Eigen::Transpose<T const> transpose(const T& mat)
+{
+  return mat.transpose();
+}
+
+
 /// Proto functor to compute the turbulent viscosity
 struct ComputeNuSmagorinsky
 {
@@ -69,28 +109,14 @@ struct ComputeNuSmagorinsky
   
   ComputeNuSmagorinsky() :
     cs(0.148),
-    use_anisotropic_correction(false)
+    use_anisotropic_correction(false),
+    use_dynamic_smagorinsky(false)
   {
   }
 
   template<typename UT, typename NUT, typename ValenceT>
-  void operator()(const UT& u, NUT& nu, const ValenceT& valence, const Real nu_visc) const
+  void operator()(const UT& u, NUT& nu, const ValenceT& valence, const Real nu_visc, Real& cs) const
   {
-    typedef typename UT::EtypeT ElementT;
-    static const Uint dim = ElementT::dimension;
-    
-    typedef mesh::Integrators::GaussMappedCoords<1, ElementT::shape> GaussT;
-    typedef Eigen::Matrix<Real, dim, dim> SMatT;
-        
-    const SMatT grad_u = u.nabla(GaussT::instance().coords.col(0))*u.value();
-    const SMatT S = 0.5*(grad_u + grad_u.transpose());
-    const Real S_norm2 = S.squaredNorm();
-    // const SMatT grad_u2 = grad_u*grad_u.transpose();
-
-    // SMatT Sd = 0.5*(grad_u2 + grad_u2.transpose());
-    // Sd.diagonal().array() -= grad_u2.trace()/3.;
-    // const Real Sd_norm2 = Sd.squaredNorm();
-
     // Compute the anisotropic cell size adjustment using the method of Scotti et al.
     Real f = 1.;
     if(use_anisotropic_correction)
@@ -102,11 +128,93 @@ struct ComputeNuSmagorinsky
       const Real log_a2 = ::log(a2);
       f = ::cosh(::sqrt(4./27.*(log_a1*log_a1 - log_a1*log_a2 + log_a2*log_a2)));
     }
+
+    // List all neighbouring elements
+    std::set<Uint> neighbourElts {};
+    get_neighbourElts(neighbourElts, u, m_node_connectivity);
+
+    // Compute the dyn Smag parameters
+    typedef typename UT::EtypeT ElementT;
+    typedef typename UT::ValueT UValT;
+    typedef typename UT::EvalT UEvalT;
+    static const Uint dim = ElementT::dimension;
     
+    typedef mesh::Integrators::GaussMappedCoords<1, ElementT::shape> GaussT;
+    typedef Eigen::Matrix<Real, dim, dim> SMatT;
+
+    const SMatT grad_u = u.nabla(GaussT::instance().coords.col(0))*u.value();
+    const SMatT S = 0.5*(grad_u + grad_u.transpose());
+    const Real S_norm = S.squaredNorm(); // SquaredNorm is the square of the square root of the sum of the abs squared elts ; in other words, the sum of the abs squared elts.
+
     // Get the isotropic length scale
     const Real delta_iso = ::pow(u.support().volume(), 2./3.);
 
-    Real nu_t = cs*cs*f*f*delta_iso * ::pow(2*S_norm2, 0.5);
+    UT neighbour_u = u;
+    Real neighbourElts_volume {0.};
+
+    for (auto i = neighbourElts.begin(); i != neighbourElts.end(); i++)
+    {
+      neighbour_u.set_element(*i);
+      neighbourElts_volume += neighbour_u.support().volume();
+
+      if(use_dynamic_smagorinsky) {
+        // test filter suffix: X2 (the grid filter has been multiplied by 2)
+        const int tf = 2;
+        const SMatT S2 = tf * S;
+        const Real S2_norm = S2.squaredNorm();
+        const Real delta2_iso = ::pow(tf * u.support().volume(), 2./3.);
+
+        // to get a computed value for u.eval():
+        u.compute_values(GaussT::instance().coords.col(0));
+
+        // Find the dynamic Smagorinsky parameter (depending on space and time)
+        const SMatT M = delta2_iso * ::pow(2*S2_norm, 0.5) * S2 - delta_iso * ::pow(2*S_norm, 0.5) * S;
+        // const UValT u2 = u.value() * tf * u.support().volume();
+        // const SMatT uu2 = u.value().transpose() * u.value() * tf * u.support().volume(); 
+        // const SMatT L = uu2 - u2.transpose() * u2;
+        const UEvalT u2 = u.eval() * (tf * u.support().volume() / 26. * tf * u.support().volume()); // 26 elements surrounding the hexa3D elt
+        const SMatT uu2 = detail::transpose(u.eval()) * u.eval() * (tf * u.support().volume() / 26. * tf * u.support().volume()); 
+        const SMatT L = uu2 - detail::transpose(u2) * u2;
+        // const SMatT L = M;
+
+        const SMatT Num = L * M.transpose();
+        const SMatT Den = 2 * M * M.transpose();
+        const SMatT Frac = - Num * Den.inverse().transpose();
+        cs = Frac.squaredNorm();
+
+        // Limiter (cf. Tamas les_dynamicsmagorinsky.c #377-378)
+        cs = std::max(cs,0.);
+        cs = std::min(std::sqrt(cs), 0.23);
+
+        // CFdebug << "yop: ************************* " << CFendl;
+        // CFdebug << "yop: u = " << u.value() << CFendl;
+        // CFdebug << "yop: GaussT::instance().coords = " << GaussT::instance().coords << CFendl;
+        // CFdebug << "yop: GaussT::instance().coords.col(0) = " << GaussT::instance().coords.col(0) << CFendl;
+        // CFdebug << "yop: u.nabla(GaussT::instance().coords.col(0)) = " << u.nabla(GaussT::instance().coords.col(0)) << CFendl;
+        // CFdebug << "yop: grad_u = " << grad_u << CFendl;
+        
+        // CFdebug << "yop: u[0] = " << u.element_vector()[0] << CFendl;
+        // CFdebug << "yop: u.value = " << u.value() << CFendl;
+        // CFdebug << "yop: u.eval = " << u.eval() << CFendl;
+        // CFdebug << "yop: u.nodes = " << u.support().nodes() << CFendl;
+        // CFdebug << "yop: vol = " << u.support().volume() << CFendl;
+        // CFdebug << "yop: u * tf * vol = " << u2 << CFendl;
+        // CFdebug << "yop: u' * u * tf * vol = " << uu2 << CFendl;
+        // CFdebug << "yop: u'*u*tf*vol - u*tf*vol * u*tf*vol = " << L << CFendl;
+        // CFdebug << "yop: M = " << M << CFendl;
+        // CFdebug << "yop: S = " << S << CFendl;
+        // CFdebug << "yop: S2 = " << S2 << CFendl;
+        // CFdebug << "yop: S_norm = " << S_norm << CFendl;
+        // CFdebug << "yop: S2_norm = " << S2_norm << CFendl;
+        // CFdebug << "yop: delta = " << delta_iso << CFendl;
+        // CFdebug << "yop: delta2 = " << delta2_iso << CFendl;
+      }
+    }
+
+    // Compute the viscosity
+    Real nu_t = cs*cs*f*f*delta_iso * ::pow(2*S_norm, 0.5);
+    CFdebug << "yop: cs = " << cs << CFendl;
+
     if(nu_t < 0. || !std::isfinite(nu_t))
       nu_t = 0.;
 
@@ -142,6 +250,7 @@ struct ComputeNuSmagorinsky
 //      const Real Sd2_54_plus_S2_52=pow(Sd2,5./4.)+pow(S2,5./2.);
       //const Real nu_t = (Sd2_54_plus_S2_52!=0.) ? Ls*Ls*Sd2_32/Sd2_54_plus_S2_52 : 0.;
     
+    // CFdebug << "yop: nu_t (smag) = " << nu_t << ", nu_visc = " << nu_visc << CFendl;
     const Eigen::Matrix<Real, ElementT::nb_nodes, 1> nodal_vals = (nu_t + nu_visc)*valence.value().array().inverse();
     nu.add_nodal_values(nodal_vals);
   }
@@ -149,6 +258,8 @@ struct ComputeNuSmagorinsky
   // Model constant
   Real cs;
   bool use_anisotropic_correction;
+  bool use_dynamic_smagorinsky;
+  mesh::NodeConnectivity* m_node_connectivity = nullptr;
 };
 
 }
@@ -173,6 +284,7 @@ private:
   Handle<InitialConditions> m_initial_conditions;
   Handle<common::Component> m_node_valence;
   Handle<solver::actions::Proto::ProtoAction> m_reset_viscosity;
+  Handle<mesh::NodeConnectivity> m_node_connectivity;
   
   /// The data stored by the Smagorinsky op terminal
   solver::actions::Proto::MakeSFOp<detail::ComputeNuSmagorinsky>::stored_type m_smagorinsky_op;

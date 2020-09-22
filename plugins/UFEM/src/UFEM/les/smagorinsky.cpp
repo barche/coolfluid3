@@ -13,6 +13,7 @@
 
 #include "common/Component.hpp"
 #include "common/Builder.hpp"
+#include "common/FindComponents.hpp"
 #include "common/OptionT.hpp"
 #include "common/OptionArray.hpp"
 #include "common/PropertyList.hpp"
@@ -54,6 +55,12 @@ Smagorinsky::Smagorinsky(const std::string& name) :
     .link_to(&m_smagorinsky_op.op.cs)
     .mark_basic();
     
+  options().add("use_dynamic_smagorinsky", m_smagorinsky_op.op.use_dynamic_smagorinsky)
+    .pretty_name("Activate dynamic smagorinsky")
+    .description("Activate the dynamic smagorinsky parameter")
+    .link_to(&m_smagorinsky_op.op.use_dynamic_smagorinsky)
+    .mark_basic();
+
   options().add("use_anisotropic_correction", m_smagorinsky_op.op.use_anisotropic_correction)
     .pretty_name("Use anisotropic correction")
     .description("Correct the LES length scale for grid anisotropy")
@@ -91,7 +98,11 @@ void Smagorinsky::trigger_set_expression()
   > AllowedElementTypesT;
 
   m_reset_viscosity->set_expression(nodes_expression(nu_eff = 0.));
-  set_expression(elements_expression(AllowedElementTypesT(), smagorinsky(u, nu_eff, valence, nu_visc)));
+
+  m_node_connectivity = create_static_component<mesh::NodeConnectivity>("NodeConnectivity");
+  m_smagorinsky_op.op.m_node_connectivity = m_node_connectivity.get();
+  
+  set_expression(elements_expression(AllowedElementTypesT(), smagorinsky(u, nu_eff, valence, nu_visc, m_smagorinsky_op.op.cs)));
 }
 
 void Smagorinsky::execute()
@@ -108,6 +119,12 @@ void Smagorinsky::on_regions_set()
     m_node_valence->options().set("regions", options().option("regions").value());
   }
   m_reset_viscosity->options().set("regions", options().option("regions").value());
+
+  if(!m_loop_regions.empty())
+  {
+    mesh::Mesh& mesh = common::find_parent_component<mesh::Mesh>(*m_loop_regions.front());
+    m_node_connectivity->initialize(common::find_components_recursively_with_filter<mesh::Elements>(mesh, mesh::IsElementsVolume()));
+  }
 }
 
 
