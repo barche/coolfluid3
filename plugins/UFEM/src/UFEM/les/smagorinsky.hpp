@@ -63,11 +63,12 @@ inline void aspect_ratios(const Real d1, const Real d2, const Real d3, Real& a1,
   }
 }
 
+/// Get neighbouring elements and center element's data
 template<typename UT>
-inline std::set<Uint> get_neighbourElts(std::set<Uint>& neighbourElts, const UT& u, const mesh::NodeConnectivity* m_node_connectivity)
+inline std::set<Uint> get_neighbElts(std::set<Uint>& neighbElts, const UT& u, const mesh::NodeConnectivity* m_node_connectivity)
 {
   const auto element_nodes = u.support().element_connectivity();
-  // UT neighbour_u = u;
+  // UT neighbElt_u = u;
 
   // CFdebug << "looking up adjacent elements for element " << u.support().element_idx() << CFendl;
   for(Uint node_idx : element_nodes)
@@ -78,8 +79,8 @@ inline std::set<Uint> get_neighbourElts(std::set<Uint>& neighbourElts, const UT&
     for(Uint j = elements_begin; j != elements_end; ++j)
     {
       // CFdebug << " (" << m_node_connectivity->node_elements()[j].first << "," << m_node_connectivity->node_elements()[j].second <<")";
-      // neighbour_u.set_element(m_node_connectivity->node_elements()[j].second); // only one type of elt considered
-      neighbourElts.insert(m_node_connectivity->node_elements()[j].second);
+      // neighbElt_u.set_element(m_node_connectivity->node_elements()[j].second); // only one type of elt considered
+      neighbElts.insert(m_node_connectivity->node_elements()[j].second);
     }
     // CFdebug << CFendl;
   }
@@ -87,11 +88,11 @@ inline std::set<Uint> get_neighbourElts(std::set<Uint>& neighbourElts, const UT&
   
   /// Check the number of neighbouring elts:
   // CFdebug << "Confirmation: Elements are: ";
-  // for (auto i = neighbourElts.begin(); i != neighbourElts.end(); i++)
+  // for (auto i = neighbElts.begin(); i != neighbElts.end(); i++)
   //   CFdebug << *i << " ";
   // CFdebug << CFendl;
 
-  return neighbourElts;
+  return neighbElts;
 }
   
 // Helper to get the transpose of either a vector or a scalar
@@ -129,90 +130,107 @@ struct ComputeNuSmagorinsky
       f = ::cosh(::sqrt(4./27.*(log_a1*log_a1 - log_a1*log_a2 + log_a2*log_a2)));
     }
 
-    // List all neighbouring elements
-    std::set<Uint> neighbourElts {};
-    get_neighbourElts(neighbourElts, u, m_node_connectivity);
+    // List all neighbouring elements (center elt incl.)
+    std::set<Uint> neighbElts {};
+    get_neighbElts(neighbElts, u, m_node_connectivity);
 
     // Compute the dyn Smag parameters
     typedef typename UT::EtypeT ElementT;
-    typedef typename UT::ValueT UValT;
-    typedef typename UT::EvalT UEvalT;
     static const Uint dim = ElementT::dimension;
     
     typedef mesh::Integrators::GaussMappedCoords<1, ElementT::shape> GaussT;
     typedef Eigen::Matrix<Real, dim, dim> SMatT;
+    typedef Eigen::Matrix<Real, 1, dim> SVecT;
 
-    const SMatT grad_u = u.nabla(GaussT::instance().coords.col(0))*u.value();
-    const SMatT S = 0.5*(grad_u + grad_u.transpose());
-    const Real S_norm = S.squaredNorm(); // SquaredNorm is the square of the square root of the sum of the abs squared elts ; in other words, the sum of the abs squared elts.
+    const Uint centerElt = u.support().element_idx();
+    const Real vol_gF = u.support().volume(); // grid filter = volume of center elt
+    
+    // Initialisation for static smagorinsky:
+    SMatT grad_u = u.nabla(GaussT::instance().coords.col(0))*u.value();
+    SMatT S = 0.5*(grad_u + grad_u.transpose());
+    Real S_norm = S.squaredNorm(); // SquaredNorm is the square of the square root of the sum of the abs squared elts ; in other words, the sum of the abs squared elts.
+
+    // Initialisation for dynamic smagorinsky:
+    Real vol_tF = 0.; // test filter = sum of volume on all neighbouring elts + center elt
+    UT neighbElt_u = u; // tmp object with neighbouring elt data
+    SVecT u_gtF {}; // grid + test filtered velocity
+    SMatT S_gtF {}; // grid + test filtered strain-tensor
+    SMatT uu_gtF {}; // grid + test filtered squared velocity
+    Real S_gtF_norm = 0.; // grid + test filtered strain-tensor magnitude
+    Real SS_norm = 0.; // strain-tensor product magnitude
+    SMatT SSxS_gtF {}; // grid + test filtered strain tensor product
+
+    if(use_dynamic_smagorinsky) {
+      for (auto i = neighbElts.begin(); i != neighbElts.end(); i++)
+      {
+        neighbElt_u.set_element(*i);
+        vol_tF += neighbElt_u.support().volume(); // data[1]
+
+        // u.value() gives velocity components for all nodes, u.eval() for the elt
+        neighbElt_u.compute_values(GaussT::instance().coords.col(0)); // Compute u.eval()
+
+        u_gtF += neighbElt_u.eval() * neighbElt_u.support().volume(); // data[2-4]
+        
+        grad_u = neighbElt_u.nabla(GaussT::instance().coords.col(0))*neighbElt_u.value();
+        S = 0.5*(grad_u + grad_u.transpose());
+
+        S_gtF += S * neighbElt_u.support().volume(); // data[5-13]
+        uu_gtF += neighbElt_u.eval().transpose() * neighbElt_u.eval() * neighbElt_u.support().volume(); // data[15-23]
+        SS_norm = std::sqrt(2 * S.squaredNorm()); // SSij
+        SSxS_gtF += SS_norm * S * neighbElt_u.support().volume(); // data[24-32]
+      }
+
+      Real invVol_tF = 1. / vol_tF;
+      u_gtF *= invVol_tF;
+      S_gtF *= invVol_tF;
+      S_gtF_norm = std::sqrt(2 * S_gtF.squaredNorm()); //data[14]
+      uu_gtF *= invVol_tF;
+      SSxS_gtF *= invVol_tF;
+    }
 
     // Get the isotropic length scale
-    const Real delta_iso = ::pow(u.support().volume(), 2./3.);
+    const Real delta_gF = ::pow(vol_gF, 2./3.);
+    const Real delta_tF = ::pow(vol_tF, 2./3.);
 
-    UT neighbour_u = u;
-    Real neighbourElts_volume {0.};
+    if(use_dynamic_smagorinsky) {
+      // Find the dynamic Smagorinsky parameter (depending on space and time)
+      const SMatT M = delta_tF * SSxS_gtF - delta_gF * S_gtF_norm * S_gtF;
+      const SMatT L = uu_gtF - u_gtF.transpose() * u_gtF;
+      const SMatT Num = L * M.transpose();
+      const SMatT Den = 2 * M * M.transpose();
+      const SMatT Frac = Num * Den.inverse().transpose();
+      cs = Frac.squaredNorm();
 
-    for (auto i = neighbourElts.begin(); i != neighbourElts.end(); i++)
-    {
-      neighbour_u.set_element(*i);
-      neighbourElts_volume += neighbour_u.support().volume();
+      // Limiter (cf. Tamas les_dynamicsmagorinsky.c #377-378)
+      cs = std::max(cs,0.);
+      cs = std::min(std::sqrt(cs), 0.23);
 
-      if(use_dynamic_smagorinsky) {
-        // test filter suffix: X2 (the grid filter has been multiplied by 2)
-        const int tf = 2;
-        const SMatT S2 = tf * S;
-        const Real S2_norm = S2.squaredNorm();
-        const Real delta2_iso = ::pow(tf * u.support().volume(), 2./3.);
-
-        // to get a computed value for u.eval():
-        u.compute_values(GaussT::instance().coords.col(0));
-
-        // Find the dynamic Smagorinsky parameter (depending on space and time)
-        const SMatT M = delta2_iso * ::pow(2*S2_norm, 0.5) * S2 - delta_iso * ::pow(2*S_norm, 0.5) * S;
-        // const UValT u2 = u.value() * tf * u.support().volume();
-        // const SMatT uu2 = u.value().transpose() * u.value() * tf * u.support().volume(); 
-        // const SMatT L = uu2 - u2.transpose() * u2;
-        const UEvalT u2 = u.eval() * (tf * u.support().volume() / 26. * tf * u.support().volume()); // 26 elements surrounding the hexa3D elt
-        const SMatT uu2 = detail::transpose(u.eval()) * u.eval() * (tf * u.support().volume() / 26. * tf * u.support().volume()); 
-        const SMatT L = uu2 - detail::transpose(u2) * u2;
-        // const SMatT L = M;
-
-        const SMatT Num = L * M.transpose();
-        const SMatT Den = 2 * M * M.transpose();
-        const SMatT Frac = - Num * Den.inverse().transpose();
-        cs = Frac.squaredNorm();
-
-        // Limiter (cf. Tamas les_dynamicsmagorinsky.c #377-378)
-        cs = std::max(cs,0.);
-        cs = std::min(std::sqrt(cs), 0.23);
-
-        // CFdebug << "yop: ************************* " << CFendl;
-        // CFdebug << "yop: u = " << u.value() << CFendl;
-        // CFdebug << "yop: GaussT::instance().coords = " << GaussT::instance().coords << CFendl;
-        // CFdebug << "yop: GaussT::instance().coords.col(0) = " << GaussT::instance().coords.col(0) << CFendl;
-        // CFdebug << "yop: u.nabla(GaussT::instance().coords.col(0)) = " << u.nabla(GaussT::instance().coords.col(0)) << CFendl;
-        // CFdebug << "yop: grad_u = " << grad_u << CFendl;
-        
-        // CFdebug << "yop: u[0] = " << u.element_vector()[0] << CFendl;
-        // CFdebug << "yop: u.value = " << u.value() << CFendl;
-        // CFdebug << "yop: u.eval = " << u.eval() << CFendl;
-        // CFdebug << "yop: u.nodes = " << u.support().nodes() << CFendl;
-        // CFdebug << "yop: vol = " << u.support().volume() << CFendl;
-        // CFdebug << "yop: u * tf * vol = " << u2 << CFendl;
-        // CFdebug << "yop: u' * u * tf * vol = " << uu2 << CFendl;
-        // CFdebug << "yop: u'*u*tf*vol - u*tf*vol * u*tf*vol = " << L << CFendl;
-        // CFdebug << "yop: M = " << M << CFendl;
-        // CFdebug << "yop: S = " << S << CFendl;
-        // CFdebug << "yop: S2 = " << S2 << CFendl;
-        // CFdebug << "yop: S_norm = " << S_norm << CFendl;
-        // CFdebug << "yop: S2_norm = " << S2_norm << CFendl;
-        // CFdebug << "yop: delta = " << delta_iso << CFendl;
-        // CFdebug << "yop: delta2 = " << delta2_iso << CFendl;
-      }
+      // CFdebug << "yop: ************************* " << CFendl;
+      // CFdebug << "yop: u = " << u.value() << CFendl;
+      // CFdebug << "yop: GaussT::instance().coords = " << GaussT::instance().coords << CFendl;
+      // CFdebug << "yop: GaussT::instance().coords.col(0) = " << GaussT::instance().coords.col(0) << CFendl;
+      // CFdebug << "yop: u.nabla(GaussT::instance().coords.col(0)) = " << u.nabla(GaussT::instance().coords.col(0)) << CFendl;
+      // CFdebug << "yop: grad_u = " << grad_u << CFendl;
+      
+      // CFdebug << "yop: u[0] = " << u.element_vector()[0] << CFendl;
+      // CFdebug << "yop: u.value = " << u.value() << CFendl;
+      // CFdebug << "yop: u.eval = " << u.eval() << CFendl;
+      // CFdebug << "yop: u.nodes = " << u.support().nodes() << CFendl;
+      // CFdebug << "yop: vol = " << u.support().volume() << CFendl;
+      // CFdebug << "yop: u * tf * vol = " << u2 << CFendl;
+      // CFdebug << "yop: u' * u * tf * vol = " << uu2 << CFendl;
+      // CFdebug << "yop: u'*u*tf*vol - u*tf*vol * u*tf*vol = " << L << CFendl;
+      // CFdebug << "yop: M = " << M << CFendl;
+      // CFdebug << "yop: S = " << S << CFendl;
+      // CFdebug << "yop: S2 = " << S2 << CFendl;
+      // CFdebug << "yop: S_norm = " << S_norm << CFendl;
+      // CFdebug << "yop: S2_norm = " << S2_norm << CFendl;
+      // CFdebug << "yop: delta = " << delta_iso << CFendl;
+      // CFdebug << "yop: delta2 = " << delta2_iso << CFendl;
     }
 
     // Compute the viscosity
-    Real nu_t = cs*cs*f*f*delta_iso * ::pow(2*S_norm, 0.5);
+    Real nu_t = cs*cs*f*f*delta_gF * ::pow(2*S_norm, 0.5);
     CFdebug << "yop: cs = " << cs << CFendl;
 
     if(nu_t < 0. || !std::isfinite(nu_t))
