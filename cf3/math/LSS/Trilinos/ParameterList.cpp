@@ -35,6 +35,7 @@ namespace detail
   std::string param_list_name_to_comp(std::string param_list_name)
   {
     boost::replace_all(param_list_name, " ", "");
+    boost::replace_all(param_list_name, ":", "");
     return param_list_name;
   }
 

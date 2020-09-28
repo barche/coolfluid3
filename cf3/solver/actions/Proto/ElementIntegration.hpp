@@ -232,6 +232,12 @@ struct ElementQuadratureEval :
         GrammarT()(boost::proto::left(expr) += m_weight * boost::proto::right(expr), m_state, m_data);
       }
 
+      template<typename ChildExprT>
+      void tag_dispatch(const boost::proto::tag::assign, ChildExprT& expr) const
+      {
+        GrammarT()(expr, m_state, m_data);
+      }
+
       // Issue an error message if a tag was not supported
       template<typename TagT, typename ChildExprT>
       void tag_dispatch(const TagT, ChildExprT& expr) const

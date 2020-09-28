@@ -138,7 +138,7 @@ void BodyForceControl::execute()
   m_correction.resize(physical_model().ndim());
   /* m_correction = ((uRef - uMean)/uRef.norm()); /// basic correction */
   m_correction = aCoef * uInteg + bCoef * (uMean - uRef); /// Goldstein p.356
-  std::cout << "yop: uInteg:" << uInteg << ", mean:" << uMean << ", corr:" << m_correction << std::endl;
+  // std::cout << "yop: uInteg:" << uInteg << ", mean:" << uMean << ", corr:" << m_correction << std::endl;
   /* m_correction(1) = 0.; */
   /* m_correction(2) = 0.; */
   /* std::cout << "yop: corr:" << m_correction << std::endl; */

@@ -195,7 +195,7 @@ void NavierStokes::on_initial_conditions_set(InitialConditions& initial_conditio
   Handle<ProtoAction> lin_vel_ic (initial_conditions.create_initial_condition("linearized_velocity", "cf3.solver.ProtoAction"));
   lin_vel_ic->set_expression(nodes_expression(group(u_adv = u, u1 = u, u2 = u, u3 = u)));
 
-  initial_conditions.create_initial_condition("density_ratio")->options().set("density_ratio", 0.);
+  // initial_conditions.create_initial_condition("density_ratio")->options().set("density_ratio", 0.);
 
   // This is the place to add any readers for restarting
   Handle<InitialConditions> restart_ic(initial_conditions.create_initial_condition("Restarts", "cf3.UFEM.InitialConditions"));

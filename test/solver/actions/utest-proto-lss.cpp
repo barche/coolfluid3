@@ -379,13 +379,16 @@ BOOST_AUTO_TEST_CASE( VectorTest )
   SolutionVector sol_vec(solve_action->options().option("lss"));
   SFOp< CustomSFOp<VectorLSSVector> > vector_vector;
 
+  RealVector result(2); result.setZero();
+
   // Run the expression
-  action->set_expression(elements_expression(
+  action->set_expression(elements_expression(boost::mpl::vector1<mesh::LagrangeP1::Triag2D>(),
     group
     (
-      _A = _0,
+      _A = _0, _a = _0,
       element_quadrature
       (
+        lit(result)[_i] = (N(T)*_x[T[_i]])[0],
         _A(T[_i],T[_i]) += transpose(nabla(T)) * nabla(T)
       ),
       matrix += _A,

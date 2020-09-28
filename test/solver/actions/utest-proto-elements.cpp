@@ -46,6 +46,8 @@
 #include "solver/actions/Proto/NodeLooper.hpp"
 #include "solver/actions/Proto/Terminals.hpp"
 
+#include "Tools/MeshGeneration/MeshGeneration.hpp"
+
 #include "Tools/Testing/TimedTestFixture.hpp"
 
 using namespace cf3;
@@ -234,6 +236,75 @@ BOOST_AUTO_TEST_CASE( ProtoVectorElementField )
   writer.options().set("mesh",mesh.handle<Mesh>());
   writer.options().set("file",URI("utest-proto-elements-vector_output.pvtu"));
   writer.execute();
+}
+
+BOOST_AUTO_TEST_CASE(IndexedSums)
+{
+  using boost::proto::lit;
+
+  Handle<mesh::Mesh> mesh = common::Core::instance().root().create_component<mesh::Mesh>("IndexedSums");
+  Tools::MeshGeneration::create_rectangle(*mesh, 1., 1., 1, 1);
+
+  mesh->geometry_fields().create_field( "vector", "u[vector]" ).add_tag("vector");
+
+  FieldVariable<0, VectorField > u("u", "vector");
+  RealMatrix sourcemat(2,2);
+  sourcemat(0,0) = 1; sourcemat(0,1) = 2;
+  sourcemat(1,0) = 3; sourcemat(1,1) = 4;
+
+  RealMatrix result1(2,2);
+  result1.setZero();
+
+  RealMatrix result2(2,2);
+  result2.setZero();
+
+  RealMatrix result3(2,2);
+  result3.setZero();
+
+  for_each_element< boost::mpl::vector1<LagrangeP1::Quad2D> >
+  (
+    mesh->topology(),
+    element_quadrature
+    (
+      lit(result1)(_i,_i) += lit(sourcemat)(_i,_i),
+      lit(result2)(_i,_j) += lit(sourcemat)(_i,_j),
+      lit(result3)(_i,_i) += lit(sourcemat)(_i,_j)
+    )
+  );
+
+  std::cout << "IndexedSums result1:\n" << result1 << std::endl;
+  std::cout << "IndexedSums result2:\n" << result2 << std::endl;
+  std::cout << "IndexedSums result3:\n" << result3 << std::endl;
+
+}
+
+BOOST_AUTO_TEST_CASE(QuadratureStore)
+{
+  using boost::proto::lit;
+
+  Handle<mesh::Mesh> mesh = common::Core::instance().root().create_component<mesh::Mesh>("IndexedSums");
+  Tools::MeshGeneration::create_rectangle(*mesh, 1., 1., 1, 1);
+
+  mesh->geometry_fields().create_field( "vector", "u[vector]" ).add_tag("vector");
+
+  FieldVariable<0, VectorField > u("u", "vector");
+  
+  for_each_node(mesh->topology(), group(u[0] = 1.0, u[1] = 2.0));
+
+  RealVector result(2); result.setZero();
+  
+  for_each_element< boost::mpl::vector1<LagrangeP1::Quad2D> >
+  (
+    mesh->topology(),
+    element_quadrature
+    (
+      lit(result) = u
+    )
+  );
+
+  std::cout << "QuadratureStore result:\n" << result << std::endl;
+  BOOST_CHECK_EQUAL(result[0], 1.0);
+  BOOST_CHECK_EQUAL(result[1], 2.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

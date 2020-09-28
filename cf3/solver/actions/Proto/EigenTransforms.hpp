@@ -278,10 +278,31 @@ struct ExtractDiag :
 /// Primitive transform to access matrix elements using operator()
 struct MatrixElementAccess : boost::proto::callable
 {
-  typedef Real result_type;
+ 
+  //typedef Real result_type;
+  template<typename Signature>
+  struct result;
+
+  template<typename This, typename MatrixT, typename IT, typename JT>
+  struct result<This(MatrixT&, IT, JT)>
+  {
+    typedef Real& type;
+  };
+
+  template<typename This, typename MatrixT, typename IT, typename JT>
+  struct result<This(const MatrixT&, IT, JT)>
+  {
+    typedef Real type;
+  };
 
   template<typename MatrixT>
-  result_type operator ()(const MatrixT& mat, const Uint i, const Uint j) const
+  Real& operator ()(MatrixT& mat, const Uint i, const Uint j) const
+  {
+    return mat(i, j);
+  }
+
+  template<typename MatrixT>
+  Real operator ()(const MatrixT& mat, const Uint i, const Uint j) const
   {
     return mat(i, j);
   }
