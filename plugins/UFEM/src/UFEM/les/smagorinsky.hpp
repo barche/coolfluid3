@@ -114,14 +114,14 @@ struct ComputeNuSmagorinsky
   typedef void result_type;
   
   ComputeNuSmagorinsky() :
-    cs(0.148),
     use_anisotropic_correction(false),
-    use_dynamic_smagorinsky(false)
+    use_dynamic_smagorinsky(false),
+    m_cs(0.148)
   {
   }
 
-  template<typename UT, typename NUT, typename ValenceT>
-  void operator()(UT& u, NUT& nu, const ValenceT& valence, const Real nu_visc, Real& cs) const
+  template<typename UT, typename NUT, typename ValenceT, typename CsT>
+  void operator()(UT& u, NUT& nu, const ValenceT& valence, const Real nu_visc, Real& cs, CsT& cs_elts) const
   {
     // Compute the anisotropic cell size adjustment using the method of Scotti et al.
     Real f = 1.;
@@ -229,18 +229,20 @@ struct ComputeNuSmagorinsky
 
     // Compute the viscosity
     Real nu_t = cs*cs*f*f*delta_gF * std::sqrt(2*S_norm);
-    CFdebug << "cs = " << cs << CFendl;
+    // CFdebug << "cs = " << cs << CFendl;
 
     if(nu_t < 0. || !std::isfinite(nu_t))
       nu_t = 0.;
 
-    CFdebug << "nu_t (smag) = " << nu_t << ", nu_visc = " << nu_visc << CFendl;
+    // CFdebug << "nu_t (smag) = " << nu_t << ", nu_visc = " << nu_visc << CFendl;
     const Eigen::Matrix<Real, ElementT::nb_nodes, 1> nodal_vals = (nu_t + nu_visc)*valence.value().array().inverse();
+    const Eigen::Matrix<Real, ElementT::nb_nodes, 1> cs_vals = cs*valence.value().array().inverse();
     nu.add_nodal_values(nodal_vals);
+    cs_elts.add_nodal_values(cs_vals);
   }
   
   // Model constant
-  Real cs;
+  Real m_cs;
   bool use_anisotropic_correction;
   bool use_dynamic_smagorinsky;
   mesh::NodeConnectivity* m_node_connectivity = nullptr;
@@ -269,7 +271,7 @@ private:
   Handle<common::Component> m_node_valence;
   Handle<solver::actions::Proto::ProtoAction> m_reset_viscosity;
   Handle<mesh::NodeConnectivity> m_node_connectivity;
-  
+
   /// The data stored by the Smagorinsky op terminal
   solver::actions::Proto::MakeSFOp<detail::ComputeNuSmagorinsky>::stored_type m_smagorinsky_op;
   

@@ -49,10 +49,10 @@ Smagorinsky::Smagorinsky(const std::string& name) :
   ProtoAction(name),
   smagorinsky(boost::proto::as_child(m_smagorinsky_op))
 {
-  options().add("cs", m_smagorinsky_op.op.cs)
+  options().add("cs", m_smagorinsky_op.op.m_cs)
     .pretty_name("Cs")
     .description("Coefficient for the smagorinsky model.")
-    .link_to(&m_smagorinsky_op.op.cs)
+    .link_to(&m_smagorinsky_op.op.m_cs)
     .mark_basic();
     
   options().add("use_dynamic_smagorinsky", m_smagorinsky_op.op.use_dynamic_smagorinsky)
@@ -79,7 +79,7 @@ Smagorinsky::Smagorinsky(const std::string& name) :
     .attach_trigger(boost::bind(&Smagorinsky::trigger_set_expression, this));
     
   m_reset_viscosity = create_component<ProtoAction>("ResetViscosity");
-    
+  
   trigger_set_expression();
 }
 
@@ -90,6 +90,9 @@ void Smagorinsky::trigger_set_expression()
   FieldVariable<2, ScalarField> valence("Valence", "node_valence");
   PhysicsConstant nu_visc("kinematic_viscosity");
 
+  // FieldVariable<3, ScalarField> cs_elts("cs", "cs", mesh::LagrangeP0::LibLagrangeP0::library_namespace());
+  FieldVariable<3, ScalarField> cs_elts("cs", "cs");
+
   // List of applicable elements
   typedef boost::mpl::vector3<
     mesh::LagrangeP1::Hexa3D,
@@ -97,12 +100,17 @@ void Smagorinsky::trigger_set_expression()
     mesh::LagrangeP1::Prism3D
   > AllowedElementTypesT;
 
-  m_reset_viscosity->set_expression(nodes_expression(nu_eff = 0.));
+  m_reset_viscosity->set_expression(nodes_expression(
+    group(
+      nu_eff = 0.,
+      cs_elts = 0.
+      ))
+    );
 
   m_node_connectivity = create_static_component<mesh::NodeConnectivity>("NodeConnectivity");
   m_smagorinsky_op.op.m_node_connectivity = m_node_connectivity.get();
   
-  set_expression(elements_expression(AllowedElementTypesT(), smagorinsky(u, nu_eff, valence, nu_visc, m_smagorinsky_op.op.cs)));
+  set_expression(elements_expression(AllowedElementTypesT(), smagorinsky(u, nu_eff, valence, nu_visc, lit(m_smagorinsky_op.op.m_cs), cs_elts)));
 }
 
 void Smagorinsky::execute()
