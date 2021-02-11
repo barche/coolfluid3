@@ -23,6 +23,8 @@ namespace les {
 namespace detail
 {
 
+using namespace solver::actions::Proto;
+
 inline void cell_sizes(const mesh::LagrangeP1::Hexa3D::NodesT& nodes, Real& d1, Real& d2, Real& d3)
 {
   d1 = (nodes.row(1) - nodes.row(0)).norm();
@@ -141,12 +143,14 @@ struct ComputeNuSmagorinsky
   ComputeNuSmagorinsky() :
     use_anisotropic_correction(false),
     use_dynamic_smagorinsky(false),
-    m_cs(0.148)
+    use_mason_wallDamping(false),
+    m_cs(0.148),
+    m_masonCoef(3)
   {
   }
 
-  template<typename UT, typename NUT, typename ValenceT, typename CsT>
-  void operator()(UT& u, NUT& nu, const ValenceT& valence, const Real nu_visc, Real& cs, CsT& cs_elts) const
+  template<typename UT, typename NUT, typename ValenceT, typename CsT, typename SgsT>
+  void operator()(UT& u, NUT& nu, const ValenceT& valence, const Real nu_visc, Real& cs, CsT& cs_elts, SgsT& sgsLambda_elts) const
   {
     // Compute the anisotropic cell size adjustment using the method of Scotti et al.
     Real f = 1.;
@@ -166,7 +170,7 @@ struct ComputeNuSmagorinsky
 
     // CFdebug << "xxxxxxxxxxxxxxxxxxxxxxxxxx" << CFendl;
     // CFdebug << "xxxxxxxxx center Elt:" << u.support().element_idx() << CFendl;
-    // Check that the node velocity equals its coordinates
+    /// Check that the node velocity equals its coordinates
     // check_nodeVelocity(u);
 
     // Compute the dyn Smag parameters
@@ -177,9 +181,11 @@ struct ComputeNuSmagorinsky
     typedef Eigen::Matrix<Real, dim, dim> SMatT;
     typedef Eigen::Matrix<Real, 1, dim> SVecT;
 
+    u.compute_values(GaussT::instance().coords.col(0));  // Compute u.eval()
+
     // Initialisation for static smagorinsky:
-    const Real vol_gF = u.support().volume(); // grid filter = volume of center elt
-    const Real delta2_gF = ::pow(vol_gF, 2./3.); // square of isotropic length scale for GRID filter
+    const Real vol_gF = u.support().volume(); // "g"rid "F"ilter = volume of center elt
+    const Real delta2_gF = ::pow(vol_gF, 2./3.); // square of isotropic length scale for grid filter
     SMatT grad_u = u.nabla(GaussT::instance().coords.col(0))*u.value();
     SMatT S = 0.5*(grad_u + grad_u.transpose());
     Real S_norm = S.squaredNorm(); // SquaredNorm is the sum of the square of all the matrix entries (Frobenius norm).
@@ -187,7 +193,7 @@ struct ComputeNuSmagorinsky
     if(use_dynamic_smagorinsky) {
       // Initialisation for dynamic smagorinsky (TEST filter > GRID filter):
       Real smagCoefC = 0; // "C" cte equal to cs^2 ; visible in Germano paper eq(5)
-      Real vol_tF = 0.; // test filter = sum of volume on all neighbouring elts + center elt (e.g. 27 for a hexa3D in the center of a 3x3x3 cubus)
+      Real vol_tF = 0.; // "t"est "F"ilter = sum of volume on all neighbouring elts + center elt (e.g. 27 for a unit hexa3D in the center of a 3x3x3 cubus)
       Uint storedElt_idx = u.support().element_idx(); // store the id of the centered element
       SVecT u_gtF {}; // grid + test filtered velocity
       u_gtF.setZero();
@@ -226,11 +232,15 @@ struct ComputeNuSmagorinsky
         SSxS += SS_norm * S * u.support().volume(); // data[24-32]
       }
 
-      // Restore the center element's data to object u and recompute its values:
+      // Restore and re-initialise the center element's data to object u and recompute its values:
       u.set_element(storedElt_idx);
       removeConstRef(u.support()).set_element(storedElt_idx);
       u.compute_values(GaussT::instance().coords.col(0));
+      grad_u = u.nabla(GaussT::instance().coords.col(0))*u.value();
+      S = 0.5*(grad_u + grad_u.transpose());
+      S_norm = S.squaredNorm();
 
+      // Normalize the neighbElts stencil sums
       const Real invVol_tF = 1. / vol_tF;
       u_gtF *= invVol_tF;
       S_gF *= invVol_tF;
@@ -238,9 +248,8 @@ struct ComputeNuSmagorinsky
       uu_gtF *= invVol_tF;
       SSxS *= invVol_tF;
 
-      const Real delta2_tF = ::pow(vol_tF, 2./3.); // square of isotropic length scale for TEST filter
-  
       // Find the dynamic Smagorinsky parameter (depending on space and time)
+      const Real delta2_tF = ::pow(vol_tF, 2./3.); // square of isotropic length scale for TEST filter  
       const SMatT M = delta2_gF * SSxS - delta2_tF * S_gF_norm * S_gF;
       const SMatT L = uu_gtF - u_gtF.transpose() * u_gtF;
       smagCoefC = L.cwiseProduct(M).sum() / (2. * M.cwiseProduct(M).sum());
@@ -254,16 +263,18 @@ struct ComputeNuSmagorinsky
       // CFdebug << "S_norm = " << S_norm << CFendl;
       // CFdebug << "" << CFendl;
 
-      // CFdebug << "u_gtF = " << u_gtF << CFendl;
-      // CFdebug << "uu_gtF = " << uu_gtF << CFendl;
-      // CFdebug << "delta2_tF = " << delta2_tF << CFendl;
-      // CFdebug << "SSxS = " << SSxS << CFendl;
       // CFdebug << "delta2_gF = " << delta2_gF << CFendl;
-      // CFdebug << "S_gF = " << S_gF << CFendl;
+      // CFdebug << "SSxS = " << SSxS << CFendl;
+      // CFdebug << "delta2_tF = " << delta2_tF << CFendl;
       // CFdebug << "S_gF_norm = " << S_gF_norm << CFendl;
+      // CFdebug << "S_gF = " << S_gF << CFendl;
+      // CFdebug << "M = " << M << CFendl;
       // CFdebug << "" << CFendl;
 
-
+      // CFdebug << "u_gtF = " << u_gtF << CFendl;
+      // CFdebug << "uu_gtF = " << uu_gtF << CFendl;
+      // CFdebug << "L = " << L << CFendl;
+      // CFdebug << "" << CFendl;
 
       // Limiter (cf. Tamas les_dynamicsmagorinsky.c #377-378)
       smagCoefC = std::max(smagCoefC,0.); // limiter to avoid NaN
@@ -271,9 +282,20 @@ struct ComputeNuSmagorinsky
       cs = std::min(cs, 0.23); // limiter cf. Lilly and Germano's paper
     }
 
-    // Compute the viscosity
-    Real nu_t = cs*cs*f*f*delta2_gF * std::sqrt(2*S_norm);
     // CFdebug << "cs = " << cs << CFendl;
+
+    Real sgsLambda = cs * std::sqrt(delta2_gF); // Subgrid Scale length scale
+
+    if(use_mason_wallDamping) {
+      // CFdebug << "sgsLambda-orig: " << sgsLambda << CFendl;
+      Real zcoord = u.support().coordinates(GaussT::instance().coords.col(0))[1]; // In fact y-coordinate (...[1]) but it is seen as the z-coordinate for us...
+      sgsLambda = std::pow(std::pow(sgsLambda, (-m_masonCoef)) + std::pow(m_kappa*(zcoord + m_z0), (-m_masonCoef)), (-1./m_masonCoef));
+      // CFdebug << "sgsLambda-Mason: " << sgsLambda << CFendl;
+    }
+
+    // Compute the viscosity
+    // Real nu_t = cs*cs*delta2_gF *f*f* std::sqrt(2*S_norm);
+    Real nu_t = std::pow(sgsLambda, 2) * f*f * std::sqrt(2*S_norm);
 
     if(nu_t < 0. || !std::isfinite(nu_t))
       nu_t = 0.;
@@ -281,15 +303,23 @@ struct ComputeNuSmagorinsky
     // CFdebug << "nu_t (smag) = " << nu_t << ", nu_visc = " << nu_visc << CFendl;
     const Eigen::Matrix<Real, ElementT::nb_nodes, 1> nodal_vals = (nu_t + nu_visc)*valence.value().array().inverse();
     const Eigen::Matrix<Real, ElementT::nb_nodes, 1> cs_vals = cs*valence.value().array().inverse();
+    const Eigen::Matrix<Real, ElementT::nb_nodes, 1> sgsLambda_vals = sgsLambda*valence.value().array().inverse();
     nu.add_nodal_values(nodal_vals);
     cs_elts.add_nodal_values(cs_vals);
+    sgsLambda_elts.add_nodal_values(sgsLambda_vals);
   }
   
   // Model constant
   Real m_cs;
+  int m_masonCoef; // Mason coefficient. Set to 3 according to Goit.
   bool use_anisotropic_correction;
   bool use_dynamic_smagorinsky;
+  bool use_mason_wallDamping;
   mesh::NodeConnectivity* m_node_connectivity = nullptr;
+
+  /// Default from KEpsilonPhysics.cpp. Else, from the model
+  Real m_kappa = 0;
+  Real m_z0 = 0;
 };
 
 }

@@ -67,6 +67,18 @@ Smagorinsky::Smagorinsky(const std::string& name) :
     .link_to(&m_smagorinsky_op.op.use_anisotropic_correction)
     .mark_basic();
 
+  options().add("use_mason_wallDamping", m_smagorinsky_op.op.use_mason_wallDamping)
+    .pretty_name("Use Mason Wall Damping")
+    .description("Reduce the LES length scale near the wall according to Mason")
+    .link_to(&m_smagorinsky_op.op.use_mason_wallDamping)
+    .mark_basic();
+
+  options().add("masonCoef", m_smagorinsky_op.op.m_masonCoef)
+    .pretty_name("n-damping function shape")
+    .description("Integer that provides the coefficient or damping function shape for the Mason wall damping theory")
+    .link_to(&m_smagorinsky_op.op.m_masonCoef)
+    .mark_basic();
+
   options().add("initial_conditions", m_initial_conditions)
     .pretty_name("Initial Conditions")
     .description("The component that is used to manage the initial conditions in the solver this action belongs to")
@@ -78,6 +90,9 @@ Smagorinsky::Smagorinsky(const std::string& name) :
     .description("Tag for the field containing the velocity")
     .attach_trigger(boost::bind(&Smagorinsky::trigger_set_expression, this));
     
+  link_physics_constant("kappa", m_smagorinsky_op.op.m_kappa);
+  link_physics_constant("z0", m_smagorinsky_op.op.m_z0);
+
   trigger_set_expression();
 }
 
@@ -87,6 +102,8 @@ void Smagorinsky::trigger_set_expression()
   FieldVariable<1, ScalarField> nu_eff("EffectiveViscosity", "navier_stokes_viscosity");
   FieldVariable<2, ScalarField> valence("Valence", "node_valence");
   FieldVariable<3, ScalarField> cs_elts("cs", "cs"); // cs value for each element of the field
+  FieldVariable<4, ScalarField> sgsLambda_elts("sgsLambda", "sgsLambda"); // sgsLambda value for each element of the field
+  
   PhysicsConstant nu_visc("kinematic_viscosity");
 
   // List of applicable elements
@@ -100,7 +117,8 @@ void Smagorinsky::trigger_set_expression()
   m_reset_viscosity->set_expression(nodes_expression(
     group(
       nu_eff = 0.,
-      cs_elts = 0.
+      cs_elts = 0.,
+      sgsLambda_elts = 0.
       )
     ));
 
@@ -112,7 +130,7 @@ void Smagorinsky::trigger_set_expression()
   //     u = coordinates
   // ));
 
-  set_expression(elements_expression(AllowedElementTypesT(), smagorinsky(u, nu_eff, valence, nu_visc, lit(m_smagorinsky_op.op.m_cs), cs_elts)));
+  set_expression(elements_expression(AllowedElementTypesT(), smagorinsky(u, nu_eff, valence, nu_visc, lit(m_smagorinsky_op.op.m_cs), cs_elts, sgsLambda_elts)));
 }
 
 void Smagorinsky::execute()
