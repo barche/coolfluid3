@@ -6,6 +6,8 @@
 
 #include <iomanip>
 
+#include <boost/bind/bind.hpp>
+
 #include "common/BoostFilesystem.hpp"
 #include "common/PropertyList.hpp"
 #include "common/OptionList.hpp"
@@ -20,6 +22,7 @@ namespace cf3 {
 namespace solver {
 
 using namespace common;
+using namespace boost::placeholders;
 
 common::ComponentBuilder < History , Component, LibSolver > History_Builder;
 

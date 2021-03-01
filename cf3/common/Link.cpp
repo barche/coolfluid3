@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include <boost/bind/bind.hpp>
+
 #include "common/BasicExceptions.hpp"
 #include "common/Builder.hpp"
 #include "common/Signal.hpp"
@@ -25,6 +27,8 @@ namespace common {
 common::ComponentBuilder < Link, Component, LibCommon > Link_Builder;
 
 ////////////////////////////////////////////////////////////////////////////////
+
+using namespace boost::placeholders;
 
 Link::Link ( const std::string& name) : Component ( name )
 {

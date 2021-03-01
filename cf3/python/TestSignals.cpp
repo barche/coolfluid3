@@ -4,6 +4,8 @@
 // GNU Lesser General Public License version 3 (LGPLv3).
 // See doc/lgpl.txt and doc/gpl.txt for the license text.
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Builder.hpp"
 #include "common/Group.hpp"
 #include "common/OptionList.hpp"
@@ -17,6 +19,7 @@ namespace cf3 {
 namespace python {
 
 using namespace common;
+using namespace boost::placeholders;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 

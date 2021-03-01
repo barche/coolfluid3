@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <boost/algorithm/string.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "common/Builder.hpp"
 #include "common/Foreach.hpp"
@@ -30,6 +31,8 @@ using namespace common::XML;
 common::ComponentBuilder < VariableManager, Component, LibMath > VariableManager_Builder;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+
+using namespace boost::placeholders;
 
 VariableManager::VariableManager(const std::string& name): Component(name)
 {

@@ -8,6 +8,7 @@
 
 #include <boost/mpl/vector.hpp>
 #include <boost/mpl/for_each.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "Teuchos_ConfigDefs.hpp"
 #include "Teuchos_RCP.hpp"
@@ -27,6 +28,8 @@
 namespace cf3 {
 namespace math {
 namespace LSS {
+
+using namespace boost::placeholders;
 
 namespace detail
 {

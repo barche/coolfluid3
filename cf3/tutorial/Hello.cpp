@@ -4,6 +4,8 @@
 // GNU Lesser General Public License version 3 (LGPLv3).
 // See doc/lgpl.txt and doc/gpl.txt for the license text.
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Builder.hpp"
 #include "common/Component.hpp"
 #include "common/OptionList.hpp"
@@ -21,6 +23,8 @@ using namespace cf3::common;
 
 namespace cf3 {
 namespace tutorial {
+
+using namespace boost::placeholders;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 

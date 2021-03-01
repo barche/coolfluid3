@@ -6,6 +6,8 @@
 
 #include <cmath>
 
+#include <boost/bind/bind.hpp>
+
 #include "common/BoostAssign.hpp"
 
 #include "common/Builder.hpp"
@@ -22,6 +24,7 @@
 using namespace boost::assign;
 using namespace cf3::common;
 using namespace cf3::common::XML;
+using namespace boost::placeholders;
 
 /////////////////////////////////////////////////////////////////////////////////////
 

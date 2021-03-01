@@ -4,6 +4,8 @@
 // GNU Lesser General Public License version 3 (LGPLv3).
 // See doc/lgpl.txt and doc/gpl.txt for the license text.
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Signal.hpp"
 #include "common/OptionT.hpp"
 #include "common/TypeInfo.hpp"
@@ -17,6 +19,8 @@ using namespace cf3::common::XML;
 
 namespace cf3 {
 namespace physics {
+
+using namespace boost::placeholders;
 
 common::RegistTypeInfo<PhysModel, LibPhysics> PhysMod_type_info;
   

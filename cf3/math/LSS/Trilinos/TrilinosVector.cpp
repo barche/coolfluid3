@@ -8,6 +8,8 @@
 
 #include "EpetraExt_readEpetraLinearSystem.h"
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Assertions.hpp"
 #include "common/Builder.hpp"
 #include "common/Log.hpp"
@@ -38,6 +40,7 @@
 using namespace cf3;
 using namespace cf3::math;
 using namespace cf3::math::LSS;
+using namespace boost::placeholders;
 
 common::ComponentBuilder < LSS::TrilinosVector, LSS::Vector, LSS::LibLSS > TrilinosVector_Builder;
 

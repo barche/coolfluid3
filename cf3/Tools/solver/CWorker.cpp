@@ -6,6 +6,8 @@
 
 #include <cmath>
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Builder.hpp"
 #include "common/LibCommon.hpp"
 
@@ -23,6 +25,8 @@ using namespace cf3::common;
 namespace cf3 {
 namespace Tools {
 namespace solver {
+
+using namespace boost::placeholders;
 
 ////////////////////////////////////////////////////////////////////////////
 

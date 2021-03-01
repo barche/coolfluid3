@@ -7,6 +7,8 @@
 #include <boost/thread/thread.hpp>
 #include <boost/assign/std/vector.hpp> // for 'operator+=()'
 
+#include <boost/bind/bind.hpp>
+
 #include <coolfluid-paths.hpp>
 
 #include "rapidxml/rapidxml.hpp"
@@ -39,6 +41,8 @@ using namespace cf3::common::XML;
 namespace cf3 {
 namespace common {
 namespace PE {
+
+using namespace boost::placeholders;
 
 ////////////////////////////////////////////////////////////////////////////
 

@@ -4,6 +4,7 @@
 // GNU Lesser General Public License version 3 (LGPLv3).
 // See doc/lgpl.txt and doc/gpl.txt for the license text.
 
+#include <boost/bind/bind.hpp>
 #include <boost/algorithm/string.hpp>
 
 #include "common/Builder.hpp"
@@ -13,6 +14,8 @@
 
 namespace cf3 {
 namespace common {
+
+using namespace boost::placeholders;
 
 RegistTypeInfo<Builder,LibCommon> Builder_TypeRegistration();
 

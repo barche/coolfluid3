@@ -6,6 +6,8 @@
 
 #include "Tools/Prowl/Notifier.hpp"
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Signal.hpp"
 #include "common/XML/SignalOptions.hpp"
 
@@ -23,6 +25,7 @@ namespace Prowl {
 
 using namespace common;
 using namespace common::XML;
+using namespace boost::placeholders;
 
 ComponentBuilder < Notifier, Component, LibProwl > Notifier_Builder;
 

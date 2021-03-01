@@ -45,7 +45,7 @@ struct CoreWrapper
 
   static void initiate(boost::python::list arglist)
   {
-    int argc = len(arglist);
+    static int argc = len(arglist);
     static char** argv = 0;
     if(!argv)
     {

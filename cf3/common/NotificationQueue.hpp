@@ -10,6 +10,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 #include <boost/signals2/signal.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "common/CF.hpp"
 #include "common/CommonAPI.hpp"
@@ -141,6 +142,8 @@ namespace common {
       sig = m_event_signals[name];
 
     EventHandler::instance().connect_to_event(name, this, &NotificationQueue::add_notification);
+
+    using namespace boost::placeholders;
 
     m_sig_begin_flush->connect(boost::bind(&NOTIFIER::begin_notify, receiver));
     sig->connect( boost::bind(fcnt, receiver, _1, _2) ); // _2 because 2 arguments

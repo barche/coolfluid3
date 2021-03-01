@@ -9,6 +9,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Signal.hpp"
 #include "common/SignalHandler.hpp"
 
@@ -37,6 +39,8 @@ public: // methods
   template < typename PTYPE, typename FTYPE >
   Signal* connect_to_event ( const std::string& sname, PTYPE* ptr, FTYPE pfunc )
   {
+  
+    using namespace boost::placeholders;
     ConnectionManager * mng = dynamic_cast<ConnectionManager*>(ptr);
 
     return &regist_signal ( sname ).connect( boost::bind ( pfunc, ptr, _1 ), mng );

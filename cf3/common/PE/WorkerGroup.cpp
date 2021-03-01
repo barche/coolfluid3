@@ -4,6 +4,8 @@
 // GNU Lesser General Public License version 3 (LGPLv3).
 // See doc/lgpl.txt and doc/gpl.txt for the license text.
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Builder.hpp"
 #include "common/LibCommon.hpp"
 #include "common/Signal.hpp"
@@ -26,6 +28,8 @@ namespace PE {
 ComponentBuilder< WorkerGroup, Component, LibCommon > WorkerGroup_Builder;
 
 ////////////////////////////////////////////////////////////////////////////////
+
+using namespace boost::placeholders;
 
 WorkerGroup::WorkerGroup( const std::string & name )
   : Component(name),

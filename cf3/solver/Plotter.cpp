@@ -4,6 +4,8 @@
 // GNU Lesser General Public License version 3 (LGPLv3).
 // See doc/lgpl.txt and doc/gpl.txt for the license text.
 
+#include <boost/bind/bind.hpp>
+
 #include "common/Builder.hpp"
 #include "common/OptionT.hpp"
 #include "common/OptionURI.hpp"
@@ -20,6 +22,7 @@
 
 using namespace cf3::common;
 using namespace cf3::common::XML;
+using namespace boost::placeholders;
 
 namespace cf3 {
 namespace solver {

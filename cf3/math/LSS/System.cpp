@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include <boost/utility.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "math/LSS/LibLSS.hpp"
 
@@ -42,6 +43,7 @@
 
 using namespace cf3;
 using namespace cf3::math;
+using namespace boost::placeholders;
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 

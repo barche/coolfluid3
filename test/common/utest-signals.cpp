@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE "Test module for CF signals"
 
 #include <boost/test/unit_test.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "common/Signal.hpp"
 #include "common/LibCommon.hpp"
@@ -23,6 +24,7 @@ using namespace boost;
 using namespace cf3;
 using namespace cf3::common;
 using namespace cf3::common::XML;
+using namespace boost::placeholders;
 
 ////////////////////////////////////////////////////////////////////////////////
 

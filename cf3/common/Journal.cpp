@@ -6,6 +6,8 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <boost/bind/bind.hpp>
+
 #include "rapidxml/rapidxml.hpp"
 
 #include "common/BoostAnyConversion.hpp"
@@ -34,6 +36,8 @@ namespace common {
 common::ComponentBuilder < Journal, Component, LibCommon > Journal_Builder;
 
 ////////////////////////////////////////////////////////////////////////////////
+
+using namespace boost::placeholders;
 
 Journal::Journal (const std::string & name)
   : Component(name),
