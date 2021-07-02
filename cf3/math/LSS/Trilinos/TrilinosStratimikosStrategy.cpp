@@ -59,7 +59,12 @@ struct TrilinosStratimikosStrategy::Implementation
     m_iteration_count(0),
     m_xcoords(0)
   {
-    Stratimikos::enableMueLu(m_linear_solver_builder);
+    if(!Kokkos::is_initialized())
+    {
+      Kokkos::initialize(common::Core::instance().argc(), common::Core::instance().argv());
+    }
+
+    Stratimikos::enableMueLu<MueLu::DefaultLocalOrdinal, MueLu::DefaultGlobalOrdinal, Kokkos::Compat::KokkosOpenMPWrapperNode>(m_linear_solver_builder);
     Teko::addTekoToStratimikosBuilder(m_linear_solver_builder);
     m_linear_solver_builder.setParameterList(m_parameter_list);
 
@@ -232,6 +237,23 @@ struct TrilinosStratimikosStrategy::Implementation
         ml_list.set("x-coordinates", m_xcoords);
         ml_list.set("y-coordinates", m_ycoords);
         ml_list.set("z-coordinates", m_zcoords);
+      }
+      Teuchos::ParameterEntry* muelu = Teuchos::getValue<Teuchos::ParameterList>(*prec_types).getEntryPtr("MueLu");
+      if(is_not_null(muelu))
+      {
+        cf3_assert(muelu->isList());
+        Handle<TrilinosVector> tvec(m_rhs);
+        if(tvec != nullptr)
+        {
+          auto evec = tvec->epetra_vector();
+          auto coordmap = evec->Map();
+          int dims = int(m_xcoords != nullptr) + int(m_ycoords != nullptr) + int(m_zcoords != nullptr);
+          CFdebug << "detected dims " << dims << CFendl;
+          double* coordsptr[3] = {m_xcoords, m_ycoords, m_zcoords};
+          auto coordsvec = Teuchos::rcp(new Epetra_MultiVector(View, coordmap, coordsptr, dims));
+          Teuchos::ParameterList& muelu_list = Teuchos::getValue<Teuchos::ParameterList>(*muelu);
+          muelu_list.set("Coordinates", coordsvec);
+        }
       }
     }
   }

@@ -77,7 +77,7 @@ std::string Comm::version() const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void Comm::init(int& argc, char** args)
+void Comm::init(int& argc, char**& args)
 {
   if ( is_finalized() )
     throw SetupError( FromHere(), "Should not call Comm::initialize() after Comm::finalize()" );

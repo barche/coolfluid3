@@ -96,11 +96,11 @@ public: // methods
   
   /// command-line arguments count
   /// @return count of arguments
-  int argc() const { return m_argc; }
+  int& argc() { return m_argc; }
   
   /// command-line arguments values
   /// @return values of arguments
-  char** argv() const { return m_argv; }
+  char** argv() { return m_argv; }
 
 private: // methods
 

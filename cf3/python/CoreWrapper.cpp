@@ -49,13 +49,14 @@ struct CoreWrapper
     static char** argv = 0;
     if(!argv)
     {
-      argv = new char*[argc];
+      argv = new char*[argc+1];
       for(Uint i = 0; i != argc; ++i)
       {
         std::string arg_i = boost::python::extract<std::string>(arglist[i]);
         argv[i] = new char[arg_i.size()+1];
         std::strcpy(argv[i], arg_i.c_str());
       }
+      argv[argc] = nullptr;
       common::Core::instance().initiate(argc, argv);
       common::PE::Comm::instance().init(argc, argv);
     }

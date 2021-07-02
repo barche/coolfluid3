@@ -69,7 +69,7 @@ public:
 
   /// Initialise the PE
   /// @post will have a valid state
-  void init(int& argc, char** args);
+  void init(int& argc, char**& args);
   /// Free the PE, careful because some mpi-s fail upon re-init after a proper finalize
   /// @post will have not a valid state
   void finalize();

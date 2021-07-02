@@ -142,6 +142,10 @@ void BodyForceControl::execute()
   /* m_correction(1) = 0.; */
   /* m_correction(2) = 0.; */
   /* std::cout << "yop: corr:" << m_correction << std::endl; */
+  if(common::PE::Comm::instance().rank() == 0)
+  {
+    std::cout << "body_force: " << m_correction << std::endl;
+  }
 
   ProtoAction::execute();
 }
