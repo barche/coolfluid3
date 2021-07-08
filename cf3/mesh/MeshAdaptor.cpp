@@ -317,6 +317,7 @@ void MeshAdaptor::make_element_node_connectivity_global()
     boost_foreach (Entities& elements, find_components_recursively<Entities>(*m_mesh))
     {
       CFdebug << "checking elements " << elements.uri() << CFendl;
+      Uint nb_els = 0;
       boost_foreach(const Handle<Space>& space, elements.spaces())
       {
         //PECheckPoint(100,space->dict().uri());
@@ -326,8 +327,11 @@ void MeshAdaptor::make_element_node_connectivity_global()
         {
           boost_foreach ( Uint& node, nodes )
           {
-            cf3_assert_desc(to_str(node)+"<"+space->dict().glb_idx().uri().string()+".size() "+to_str(space->dict().glb_idx().size()),node<space->dict().glb_idx().size());
+            cf3_always_assert_desc(to_str(node)+"<"+space->dict().glb_idx().uri().string()+".size() "+to_str(space->dict().glb_idx().size()),node<space->dict().glb_idx().size());
             node = space->dict().glb_idx()[node];
+            ++nb_els;
+            if(nb_els % 10000 == 0)
+              CFdebug << "Processed " << nb_els << " elements " << CFendl;
           }
         }
         // PECheckPoint(100,"global connectivity = \n"<<space->connectivity());
