@@ -316,6 +316,7 @@ void MeshAdaptor::make_element_node_connectivity_global()
     CFdebug << "MeshAdaptor: make element-node connectivity global" << CFendl;
     boost_foreach (Entities& elements, find_components_recursively<Entities>(*m_mesh))
     {
+      CFdebug << "checking elements " << elements.uri() << CFendl;
       boost_foreach(const Handle<Space>& space, elements.spaces())
       {
         //PECheckPoint(100,space->dict().uri());
@@ -329,7 +330,7 @@ void MeshAdaptor::make_element_node_connectivity_global()
             node = space->dict().glb_idx()[node];
           }
         }
-        //PECheckPoint(100,"global connectivity = \n"<<space->connectivity());
+        // PECheckPoint(100,"global connectivity = \n"<<space->connectivity());
       }
     }
   }
@@ -691,6 +692,7 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
   {
     PackedElement unpacked_elem(*m_mesh);
     Uint recv_pid=0;
+    Uint nb_recv = 0;
     cf3_assert(receive_buffer.size() == receive_buffer.displs().back()+receive_buffer.strides().back());
     while (receive_buffer.more_to_unpack())
     {
@@ -711,6 +713,10 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
 
       if (mesh_elems.count(unpacked_elem.glb_idx()) == 0)
         add_element(unpacked_elem);
+
+      ++nb_recv;
+      if(nb_recv % 10000 == 0)
+      CFdebug << "received " << nb_recv << " elements" << CFendl;
     }
   }
 
