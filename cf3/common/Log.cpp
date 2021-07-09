@@ -115,7 +115,7 @@ LogStream & Logger::getStream(LogLevel type)
 
 //////////////////////////////////////////////////////////////////////////////
 
-void Logger::openFiles()
+void Logger::openFiles(const std::string& prefix)
 {
   if(PE::Comm::instance().is_active())
   {
@@ -125,9 +125,7 @@ void Logger::openFiles()
 
     int rank = PE::Comm::instance().rank();
 
-    filesystem::remove(logFile.str());
-
-    logFile << "output-p" << rank << ".log";
+    logFile << prefix << rank << ".log";
 
     fdLogFile = iostreams::file_descriptor_sink(logFile.str());
 

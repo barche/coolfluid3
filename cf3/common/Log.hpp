@@ -76,7 +76,7 @@ class Common_API Logger : public boost::noncopyable {
   LogStream & getStream(LogLevel type);
 
   /// @brief Creates file descriptors and gives them to streams.
-  void openFiles();
+  void openFiles(const std::string& prefix = "output-");
 
   void set_log_level(const Uint log_level);
 

@@ -339,6 +339,7 @@ void MeshAdaptor::make_element_node_connectivity_global()
     }
   }
   is_node_connectivity_global = true;
+  CFdebug << "MeshAdaptor: finished make element-node connectivity global" << CFendl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

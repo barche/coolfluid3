@@ -61,7 +61,7 @@ m_flushed(true)
 
   // by default, only the first processor outputs
   m_filterRankZero[SCREEN] = true;
-  m_filterRankZero[FILE] = true;
+  m_filterRankZero[FILE] = false;
   m_filterRankZero[STRING] = true;
   m_filterRankZero[SYNC_SCREEN] = true;
 
@@ -299,7 +299,6 @@ bool LogStream::getFilterRankZero(LogDestination dest) const
 void LogStream::setFilterRankZero(bool filterRankZero)
 {
   m_filterRankZero[SCREEN] = filterRankZero;
-  m_filterRankZero[FILE] = filterRankZero;
   m_filterRankZero[STRING] = filterRankZero;
   m_filterRankZero[SYNC_SCREEN] = filterRankZero;
 }

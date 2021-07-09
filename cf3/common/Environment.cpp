@@ -16,6 +16,8 @@
 namespace cf3 {
 namespace common {
 
+using namespace boost::placeholders;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 common::ComponentBuilder < Environment, Component, LibCommon > Environment_Builder;
@@ -86,11 +88,6 @@ Environment::Environment ( const std::string& name) : Component ( name )
       .description("If true, signal error when some user provided config parameters are not used.")
       .mark_basic();
 
-  options().add("main_logger_file_name", std::string("output.log"))
-      .pretty_name("Main Logger File Name")
-      .description("The name if the file in which to put the logging messages.")
-      .mark_basic();
-
   options().add("exception_log_level", (Uint) ERROR)
       .pretty_name("Exception Log Level")
       .description("The log level for exceptions")
@@ -109,6 +106,12 @@ Environment::Environment ( const std::string& name) : Component ( name )
   signal("rename_component")->hidden(true);
   signal("delete_component")->hidden(true);
   signal("move_component")->hidden(true);
+
+  regist_signal("open_log_file")
+    .connect( boost::bind( &Environment::signal_open_log_file, this, _1 ) )
+    .description("creates a new subcomponent")
+    .pretty_name("Create component")
+    .signature( boost::bind(&Environment::signature_open_log_file, this, _1) );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,6 +182,25 @@ void Environment::trigger_log_level()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void Environment::signal_open_log_file( SignalArgs& args  )
+{
+  SignalOptions options( args );
+
+  std::string prefix  = "output-";
+  if (options.check("prefix"))
+    prefix = options.value<std::string>("prefix");
+
+  Logger::instance().openFiles(prefix);
+}
+
+void Environment::signature_open_log_file( SignalArgs& args )
+{
+  SignalOptions options( args );
+
+  options.add("prefix", std::string("output-") )
+      .description("Prefix for the logfile name (appended with rank.log)");
+}
 
 } // common
 } // cf3

@@ -51,6 +51,10 @@ private: // functions
 
   void trigger_log_level();
 
+  void signal_open_log_file(SignalArgs& args);
+
+  void signature_open_log_file(SignalArgs& args);
+
 }; // Environment
 
 ////////////////////////////////////////////////////////////////////////////////
