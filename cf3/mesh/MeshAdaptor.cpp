@@ -316,8 +316,7 @@ void MeshAdaptor::make_element_node_connectivity_global()
     CFdebug << "MeshAdaptor: make element-node connectivity global" << CFendl;
     boost_foreach (Entities& elements, find_components_recursively<Entities>(*m_mesh))
     {
-      CFdebug << "checking elements " << elements.uri() << CFendl;
-      Uint nb_els = 0;
+      CFdebug << "make_element_node_connectivity_global: adding elements " << elements.uri() << CFendl;
       boost_foreach(const Handle<Space>& space, elements.spaces())
       {
         //PECheckPoint(100,space->dict().uri());
@@ -327,11 +326,8 @@ void MeshAdaptor::make_element_node_connectivity_global()
         {
           boost_foreach ( Uint& node, nodes )
           {
-            cf3_always_assert_desc(to_str(node)+"<"+space->dict().glb_idx().uri().string()+".size() "+to_str(space->dict().glb_idx().size()),node<space->dict().glb_idx().size());
+            cf3_assert_desc(to_str(node)+"<"+space->dict().glb_idx().uri().string()+".size() "+to_str(space->dict().glb_idx().size()),node<space->dict().glb_idx().size());
             node = space->dict().glb_idx()[node];
-            ++nb_els;
-            if(nb_els % 10000 == 0)
-              CFdebug << "Processed " << nb_els << " elements " << CFendl;
           }
         }
         // PECheckPoint(100,"global connectivity = \n"<<space->connectivity());
@@ -653,8 +649,11 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
   // Element-node connectivity tables must be GLOBAL
   make_element_node_connectivity_global();
 
+  CFdebug << "send_elements: sending elements" << CFendl;
+  Uint nb_pids = PE::Comm::instance().size();
+  bool buffer_extended = false;
   // 1) Sending elements, and building nodes_to_send change set
-  for (Uint pid=0; pid<PE::Comm::instance().size(); ++pid)
+  for (Uint pid=0; pid<nb_pids; ++pid)
   {
     // Mark in the buffer that following will be sent to a new processor
     send_buffer.mark_pid_start();
@@ -672,15 +671,24 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
         send_buffer << packed_elem;
       }
     }
+
+    if(!buffer_extended && send_buffer.size() != 0)
+    {
+      CFdebug << "send_elements: reserving " << (nb_pids+1)*send_buffer.size() << CFendl;
+      send_buffer.reserve((nb_pids+1)*send_buffer.size());
+      buffer_extended = true;
+    }
   }
 
   //////PECheckArrivePoint(100,"Send/receive elements");
 
+  CFdebug << "send_elements: send/receive (all_to_all)" << CFendl;
   // Send/Receive the elements.
   send_buffer.all_to_all(receive_buffer);
 
   // 2) Add the elements
 
+  CFdebug << "send_elements: add elements" << CFendl;
   std::set< boost::uint64_t > mesh_elems;
   boost_foreach (const Handle<Entities>& entities, m_mesh->elements())
   {
@@ -690,6 +698,7 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
     }
   }
 
+  CFdebug << "send_elements: unpack" << CFendl;
   // Unpack elements from the receive_buffer on the receiving side
   std::vector< std::vector< std::set<boost::uint64_t> > > received_glb_elements_pid(PE::Comm::instance().size(), std::vector< std::set<boost::uint64_t> >(m_mesh->elements().size()));
 
@@ -697,7 +706,6 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
   {
     PackedElement unpacked_elem(*m_mesh);
     Uint recv_pid=0;
-    Uint nb_recv = 0;
     cf3_assert(receive_buffer.size() == receive_buffer.displs().back()+receive_buffer.strides().back());
     while (receive_buffer.more_to_unpack())
     {
@@ -718,13 +726,10 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
 
       if (mesh_elems.count(unpacked_elem.glb_idx()) == 0)
         add_element(unpacked_elem);
-
-      ++nb_recv;
-      if(nb_recv % 10000 == 0)
-      CFdebug << "received " << nb_recv << " elements" << CFendl;
     }
   }
 
+  CFdebug << "send_elements: fill imported_elements_glb_id" << CFendl;
   // Fill imported_elements_glb_id
   imported_elements_glb_id.resize(PE::Comm::instance().size(), std::vector< std::vector<boost::uint64_t> >(nb_entities));
   for (Uint pid=0; pid<PE::Comm::instance().size(); ++pid)
@@ -739,6 +744,8 @@ void MeshAdaptor::send_elements(const std::vector< std::vector< std::vector<Uint
       }
     }
   }
+
+  CFdebug << "send_elements: finished" << CFendl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

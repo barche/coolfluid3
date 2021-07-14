@@ -75,9 +75,11 @@ coolfluid_add_test( UTEST utest-mesh-meshadaptor
                     LIBS  coolfluid_mesh
                     MPI   2)
 
+include_directories(${CGNS_INCLUDE_DIRS})
+
 coolfluid_add_test( UTEST     utest-mesh-cgns
                     CPP       utest-mesh-cgns.cpp
-                    LIBS      coolfluid_mesh_actions coolfluid_mesh_cgns coolfluid_mesh_neu coolfluid_mesh_gmsh
+                    LIBS      coolfluid_mesh_actions coolfluid_mesh_cgns coolfluid_mesh_neu coolfluid_mesh_gmsh ${CGNS_LIBRARIES}
                     DEPENDS   copy-resources
                     CONDITION coolfluid_mesh_cgns_builds)
 

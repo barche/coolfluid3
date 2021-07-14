@@ -51,8 +51,8 @@ std::string CodeLocation::short_str() const
   sprintf (line, "%d", m_line);
   std::string place;// = filesystem::path(m_file).end().;//(filesystem::path(m_file).parent_path().string());
 
-  filesystem::path path(m_file);
-  std::list<filesystem::path> parts;
+  boost::filesystem::path path(m_file);
+  std::list<boost::filesystem::path> parts;
   parts.push_back(path);
   if (parts.size() < 2)
   {
@@ -61,7 +61,7 @@ std::string CodeLocation::short_str() const
   else
   {
     boost::filesystem::path pathSub;
-    std::list<filesystem::path>::iterator it = parts.end();
+    std::list<boost::filesystem::path>::iterator it = parts.end();
 
     it--; it--;
     for ( ; it != parts.end(); ++it)

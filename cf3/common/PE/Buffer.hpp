@@ -267,7 +267,9 @@ inline void Buffer::reserve(const Uint size)
 {
   if(m_size+static_cast<int>(size) > m_capacity)
   {
+    CFdebug << "increasing buffer capacity from " << m_capacity << " by " << size;
     m_capacity = std::max(2*m_capacity,m_size+static_cast<int>(size));
+    CFdebug << ". New capacity: " << m_capacity << CFendl;
     char* new_buffer = new char[m_capacity];
     if (is_not_null(m_buffer))
     {

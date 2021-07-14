@@ -9,6 +9,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/bind/bind.hpp>
+
 #include <boost/shared_ptr.hpp>
 
 #include "common/CommonAPI.hpp"
@@ -18,6 +20,8 @@
 
 namespace cf3 {
 namespace common {
+
+  using namespace boost::placeholders;
 
   class Component;
   class EventHandler;

@@ -13,6 +13,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/bind/bind.hpp>
+
 #include <boost/version.hpp>
 #include <boost/enable_shared_from_this.hpp>
 
@@ -35,6 +37,8 @@ namespace boost
 
 namespace cf3 {
 namespace common {
+
+using namespace boost::placeholders;
 
 template<class T> class ComponentIterator;
 class OptionList;
